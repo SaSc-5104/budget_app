@@ -1,10 +1,7 @@
 """Budget Tracker: input (income + expenses) -> processing (Pandas) -> output (summary, Matplotlib charts, recommendations)."""
-import io, base64, html
+import html
 import pandas as pd
 import numpy as np
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 from pyscript import document
 from pyodide.ffi import create_proxy
 
@@ -15,7 +12,7 @@ GROUPS = {"Housing": "Needs", "Groceries": "Needs", "Utilities": "Needs", "Trans
           "Subscriptions": "Wants", "Travel": "Wants", "Other": "Wants",
           "Savings & investing": "Savings"}
 TARGET = {"Needs": 50, "Wants": 30, "Saved": 20}
-COLORS = {"Needs": "#3b5bdb", "Wants": "#f08c00", "Saved": "#2f9e6b"}
+COLORS = {"Needs": "#6D8196", "Wants": "#4A4A4A", "Saved": "#8A9A83"}
 MAX_AMOUNT = 1_000_000_000
 expenses = []  # list of {"category": str, "amount": float}
 
@@ -83,54 +80,42 @@ def recommendations(a):
     return recs
 
 
-# ---------- charts ----------
-def to_src(fig):
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=110, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+# ---------- charts: responsive, native SVG ----------
+PALETTE = ["#6D8196", "#8A9A83", "#A88D70", "#4A4A4A", "#B5A88D", "#8799A8", "#CBCBCB"]
 
 
 def chart_donut(a):
-    s = a["by_cat"]
-    if len(s) > 6:
-        s = pd.concat([s.iloc[:6], pd.Series({"Everything else": s.iloc[6:].sum()})])
-    fig, ax = plt.subplots(figsize=(5, 4))
-    ax.pie(s.values, labels=s.index, autopct=lambda p: f"{p:.0f}%" if p > 5 else "", pctdistance=0.78,
-           wedgeprops={"width": 0.42, "edgecolor": "white"}, textprops={"fontsize": 8})
-    ax.text(0, 0, money(a["total"]), ha="center", va="center", fontsize=13, fontweight="bold")
-    ax.set_title("Where your money goes", fontsize=11)
-    return to_src(fig)
+    vals = list(a["by_cat"].items())
+    if len(vals) > 6:
+        vals = vals[:6] + [("Everything else", sum(v for _, v in vals[6:]))]
+    total, circumference, offset = sum(v for _, v in vals), 2 * np.pi * 42, 0
+    arcs, legend = [], []
+    for i, (name, value) in enumerate(vals):
+        pct = value / total if total else 0
+        dash = circumference * pct
+        color = PALETTE[i % len(PALETTE)]
+        arcs.append(f'<circle cx="60" cy="60" r="42" fill="none" stroke="{color}" stroke-width="13" stroke-dasharray="{dash:.2f} {circumference-dash:.2f}" stroke-dashoffset="{-offset:.2f}" transform="rotate(-90 60 60)"/>')
+        offset += dash
+        legend.append(f'<div class="chart-legend-row"><i style="background:{color}"></i><span>{html.escape(str(name))}</span><b>{money(value)}</b></div>')
+    return '<div class="donut-layout"><svg class="donut" viewBox="0 0 120 120" role="img" aria-label="Spending distribution">' + ''.join(arcs) + f'<text x="60" y="57" text-anchor="middle" class="donut-total">{html.escape(money(a["total"]))}</text><text x="60" y="70" text-anchor="middle" class="donut-caption">total spent</text></svg><div class="chart-legend">' + ''.join(legend) + '</div></div>'
 
 
 def chart_rule(a):
-    labels = list(TARGET)
-    actual = [a["pct"][k] for k in labels]
-    x = np.arange(3)
-    fig, ax = plt.subplots(figsize=(5, 4))
-    ax.bar(x - 0.2, actual, 0.4, color=[COLORS[k] for k in labels], label="You")
-    ax.bar(x + 0.2, [TARGET[k] for k in labels], 0.4, color="#c5cbd8", label="Guideline")
-    for i, v in enumerate(actual):
-        ax.text(i - 0.2, v + 1, f"{v:.0f}%", ha="center", fontsize=9)
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels)
-    ax.set_ylabel("% of income")
-    ax.set_title("You vs the 50/30/20 guideline", fontsize=11)
-    ax.legend(frameon=False, fontsize=8)
-    ax.spines[["top", "right"]].set_visible(False)
-    return to_src(fig)
+    rows = []
+    for key, target in TARGET.items():
+        actual = a["pct"][key]
+        color = COLORS[key]
+        rows.append(f'<div class="compare-row"><div class="compare-label"><span>{key}</span><b>{actual:.0f}%</b></div><div class="track"><i style="width:{min(actual,100):.1f}%;background:{color}"></i><em style="left:{target}%" title="Guideline: {target}%"></em></div><div class="compare-foot"><span>You</span><span>Guideline {target}%</span></div></div>')
+    return '<div class="compare-chart">' + ''.join(rows) + '</div>'
 
 
 def chart_cats(a):
-    s = (a["by_cat"] / a["income"] * 100).sort_values()
-    fig, ax = plt.subplots(figsize=(5, 4))
-    ax.barh(s.index, s.values, color=[COLORS["Saved"] if GROUPS.get(c) == "Savings" else COLORS["Needs"] if GROUPS.get(c) == "Needs" else COLORS["Wants"] for c in s.index])
-    for i, v in enumerate(s.values):
-        ax.text(v + 0.3, i, f"{v:.0f}%", va="center", fontsize=8)
-    ax.set_xlabel("% of income")
-    ax.set_title("Each category as a share of income", fontsize=11)
-    ax.spines[["top", "right"]].set_visible(False)
-    return to_src(fig)
+    s = (a["by_cat"] / a["income"] * 100).sort_values(ascending=False).head(7)
+    rows = []
+    for category, value in s.items():
+        color = COLORS["Saved"] if GROUPS.get(category) == "Savings" else COLORS["Needs"] if GROUPS.get(category) == "Needs" else COLORS["Wants"]
+        rows.append(f'<div class="category-row"><div class="category-label"><span>{html.escape(str(category))}</span><b>{value:.0f}%</b></div><div class="track"><i style="width:{min(value,100):.1f}%;background:{color}"></i></div></div>')
+    return '<div class="category-chart">' + ''.join(rows) + '</div>'
 
 
 # ---------- rendering ----------
@@ -173,7 +158,7 @@ def render():
     el("split").innerHTML = "".join(f"<div style='width:{v / scale * 100:.2f}%;background:{c}'></div>" for _, v, c in parts)
     el("legend").innerHTML = "".join(f"<span><i class='dot' style='background:{c}'></i>{n} {money(v)}</span>" for n, v, c in parts)
     el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a))
-    el("c1").src, el("c2").src, el("c3").src = chart_donut(a), chart_rule(a), chart_cats(a)
+    el("c1").innerHTML, el("c2").innerHTML, el("c3").innerHTML = chart_donut(a), chart_rule(a), chart_cats(a)
 
 
 # ---------- events ----------
