@@ -1,5 +1,11 @@
 """Budget Tracker: browser-side budget analysis with responsive SVG charts."""
 import html
+import csv
+import io
+import json
+from datetime import datetime
+from urllib.parse import quote
+from js import window
 import pandas as pd
 import numpy as np
 from pyscript import document
@@ -16,6 +22,7 @@ COLORS = {"Needs": "#6D8196", "Wants": "#4A4A4A", "Saved": "#8A9A83"}
 MAX_AMOUNT = 1_000_000_000
 expenses = []  # list of {"category": str, "amount": float}
 step = "income"
+saved_months = {}
 
 
 def el(i):
@@ -128,7 +135,7 @@ def render():
 
 
 def show_results():
-    global expenses, step
+    global expenses, step, saved_months
     try:
         income = parse_positive(el("income").value, "income")
         entries = []
@@ -150,6 +157,18 @@ def show_results():
     el("expense-err").textContent = ""
     expenses = entries
     a = analyze(income, expenses)
+    month = el("budget-month").value
+    if len(month) != 7 or month[4] != "-":
+        el("expense-err").textContent = "Choose a month to continue."
+        return
+    month_record = {"income": income, "total": a["total"], "left": a["left"],
+                    "needs": a["needs"], "wants": a["wants"], "saved": a["saved"],
+                    "categories": {item["category"]: item["amount"] for item in expenses}}
+    saved_months[month] = month_record
+    try:
+        window.localStorage.setItem("budget-months", json.dumps(saved_months))
+    except Exception:
+        pass
     big = el("big")
     if a["left"] >= 0:
         big.className, big.textContent = "big", f"{money(a['left'])} left"
@@ -164,6 +183,7 @@ def show_results():
     el("legend").innerHTML = "".join(f"<span><i class='dot' style='background:{c}'></i>{n} {money(v)}</span>" for n, v, c in parts)
     el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a))
     el("c1").innerHTML, el("c2").innerHTML, el("c3").innerHTML = chart_donut(a), chart_rule(a), chart_cats(a)
+    render_comparison(month)
     step = "results"
     render()
 
@@ -203,6 +223,33 @@ def start_over(e):
     render()
 
 
+def download_summary(e):
+    income = parse_positive(el("income").value, "income")
+    a = analyze(income, expenses)
+    output = io.StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(["Monthly budget summary"])
+    writer.writerow(["Month", el("budget-month").value])
+    writer.writerow(["Monthly take-home income", f'{income:.2f}'])
+    writer.writerow(["Total expenses", f'{a["total"]:.2f}'])
+    writer.writerow(["Left over (negative means over budget)", f'{a["left"]:.2f}'])
+    writer.writerow([])
+    writer.writerow(["Budget group", "Spent", "Share of income", "Guideline"])
+    for key, amount, target_key in (("Needs", a["needs"], "Needs"), ("Wants", a["wants"], "Wants"), ("Savings", a["saved_cat"], "Saved")):
+        pct = amount / income * 100
+        writer.writerow([key, f"{amount:.2f}", f"{pct:.1f}%", f'{TARGET[target_key]}%'])
+    writer.writerow([])
+    writer.writerow(["Category", "Group", "Monthly amount", "Share of income"])
+    for item in expenses:
+        writer.writerow([item["category"], GROUPS.get(item["category"], "Wants"), f'{item["amount"]:.2f}', f'{item["amount"] / income * 100:.1f}%'])
+    anchor = document.createElement("a")
+    anchor.href = "data:text/csv;charset=utf-8," + quote(output.getvalue())
+    anchor.download = "budget-summary.csv"
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+
+
 def build_expense_fields():
     groups = {"Needs": [], "Wants": [], "Savings": []}
     for category, group in GROUPS.items():
@@ -218,11 +265,71 @@ def build_expense_fields():
     el("expense-fields").innerHTML = "".join(blocks)
 
 
+def month_label(key):
+    return datetime.strptime(key, "%Y-%m").strftime("%B %Y")
+
+
+def render_comparison(current_month):
+    options = sorted((key for key in saved_months if key != current_month), reverse=True)
+    select = el("compare-month")
+    select.innerHTML = '<option value="">Choose a month</option>' + "".join(
+        f'<option value="{key}">{month_label(key)}</option>' for key in options)
+    el("comparison-note").hidden = bool(options)
+    el("comparison-content").hidden = not bool(options)
+    if options:
+        select.value = options[0]
+        render_comparison_detail(current_month, options[0])
+    else:
+        el("comparison-table").innerHTML = ""
+
+
+def render_comparison_detail(current_month, compare_month):
+    if not compare_month or compare_month not in saved_months:
+        el("comparison-content").hidden = True
+        el("comparison-note").hidden = False
+        el("comparison-table").innerHTML = ""
+        return
+    el("comparison-content").hidden = False
+    el("comparison-note").hidden = True
+    current, previous = saved_months[current_month], saved_months[compare_month]
+    labels = [("Income", "income"), ("Expenses", "total"), ("Needs", "needs"),
+              ("Wants", "wants"), ("Savings", "saved"), ("Left over", "left")]
+    rows = []
+    for label, key in labels:
+        now, before = current[key], previous[key]
+        delta = now - before
+        rows.append(f'<tr><th scope="row">{label}</th><td>{money(now)}</td><td>{money(before)}</td><td>{"+" if delta > 0 else "−" if delta < 0 else ""}{money(abs(delta)) if delta else money(0)}</td></tr>')
+    categories = set(current["categories"]) | set(previous["categories"])
+    cat_rows = []
+    for category in sorted(categories, key=lambda c: abs(current["categories"].get(c, 0) - previous["categories"].get(c, 0)), reverse=True):
+        now, before = current["categories"].get(category, 0), previous["categories"].get(category, 0)
+        delta = now - before
+        cat_rows.append(f'<tr><th scope="row">{html.escape(category)}</th><td>{money(now)}</td><td>{money(before)}</td><td>{"+" if delta > 0 else "−" if delta < 0 else ""}{money(abs(delta)) if delta else money(0)}</td></tr>')
+    detail = f'<p class="comparison-caption">{month_label(current_month)} compared with {month_label(compare_month)}</p><div class="comparison-scroll"><table class="comparison-grid"><thead><tr><th>Monthly totals</th><th>{month_label(current_month)}</th><th>{month_label(compare_month)}</th><th>Change</th></tr></thead><tbody>{"".join(rows)}</tbody></table>'
+    if cat_rows:
+        detail += f'<table class="comparison-grid"><thead><tr><th>By category</th><th>{month_label(current_month)}</th><th>{month_label(compare_month)}</th><th>Change</th></tr></thead><tbody>{"".join(cat_rows)}</tbody></table>'
+    el("comparison-table").innerHTML = detail + "</div>"
+
+
+def on_compare_change(e):
+    current_month = el("budget-month").value
+    render_comparison_detail(current_month, el("compare-month").value)
+
+
 build_expense_fields()
+el("budget-month").value = datetime.now().strftime("%Y-%m")
+try:
+    raw_months = window.localStorage.getItem("budget-months")
+    if raw_months:
+        saved_months = json.loads(str(raw_months))
+except Exception:
+    saved_months = {}
 el("income-form").addEventListener("submit", create_proxy(on_income_submit))
 el("back-income").addEventListener("click", create_proxy(back_to_income))
 el("show-results").addEventListener("click", create_proxy(lambda e: show_results()))
 el("edit-expenses").addEventListener("click", create_proxy(edit_expenses))
+el("download-summary").addEventListener("click", create_proxy(download_summary))
+el("compare-month").addEventListener("change", create_proxy(on_compare_change))
 el("start-over").addEventListener("click", create_proxy(start_over))
 el("loading").hidden = True
 render()
