@@ -15,6 +15,7 @@ TARGET = {"Needs": 50, "Wants": 30, "Saved": 20}
 COLORS = {"Needs": "#6D8196", "Wants": "#4A4A4A", "Saved": "#8A9A83"}
 MAX_AMOUNT = 1_000_000_000
 expenses = []  # list of {"category": str, "amount": float}
+step = "income"
 
 
 def el(i):
@@ -120,30 +121,34 @@ def chart_cats(a):
 
 # ---------- rendering ----------
 def render():
-    il = el("items")
-    il.innerHTML = ""
-    for i, e in enumerate(expenses):
-        li = document.createElement("li")
-        li.innerHTML = f"<span>{html.escape(e['category'])}</span><span>{money(e['amount'])} "
-        btn = document.createElement("button")
-        btn.className, btn.textContent = "link", "Remove"
-        btn.setAttribute("aria-label", f"Remove {e['category']} {money(e['amount'])}")
-        btn.addEventListener("click", create_proxy(lambda ev, i=i: remove(i)))
-        li.lastChild.appendChild(btn)
-        il.appendChild(li)
-    el("none").hidden = bool(expenses)
+    for name in ("income", "expense", "results"):
+        el(f"{name}-step").hidden = step != name
+    for i in range(1, 4):
+        el(f"p{i}").className = "active" if i == {"income": 1, "expense": 2, "results": 3}[step] else ""
 
+
+def show_results():
+    global expenses, step
     try:
         income = parse_positive(el("income").value, "income")
-    except ValueError:
-        income = None
-    if income is None or not expenses:
-        el("results").hidden = True
-        el("prompt").parentElement.hidden = False
+        entries = []
+        for i, category in enumerate(GROUPS):
+            raw = el(f"expense-{i}").value.strip()
+            if not raw:
+                continue
+            try:
+                amount = float(raw)
+            except ValueError:
+                raise ValueError(f"Enter a valid amount for {category}.")
+            if not np.isfinite(amount) or amount < 0 or amount > MAX_AMOUNT:
+                raise ValueError(f"Enter an amount from 0 to {money(MAX_AMOUNT)} for {category}.")
+            if amount > 0:
+                entries.append({"category": category, "amount": round(amount, 2)})
+    except ValueError as ex:
+        el("expense-err").textContent = str(ex)
         return
-    el("prompt").parentElement.hidden = True
-    el("results").hidden = False
-
+    el("expense-err").textContent = ""
+    expenses = entries
     a = analyze(income, expenses)
     big = el("big")
     if a["left"] >= 0:
@@ -152,59 +157,72 @@ def render():
     else:
         big.className, big.textContent = "big bad", f"{money(-a['left'])} over"
         el("bigsub").textContent = f"Expenses of {money(a['total'])} exceed your income of {money(income)}."
-    scale = max(income, a["total"])
+    scale = max(income, a["total"], 1)
     parts = [("Needs", a["needs"], COLORS["Needs"]), ("Wants", a["wants"], COLORS["Wants"]),
-             ("Savings", a["saved_cat"], COLORS["Saved"]), ("Unspent", max(a["left"], 0), "#c5cbd8")]
+             ("Savings", a["saved_cat"], COLORS["Saved"]), ("Unspent", max(a["left"], 0), "#CBCBCB")]
     el("split").innerHTML = "".join(f"<div style='width:{v / scale * 100:.2f}%;background:{c}'></div>" for _, v, c in parts)
     el("legend").innerHTML = "".join(f"<span><i class='dot' style='background:{c}'></i>{n} {money(v)}</span>" for n, v, c in parts)
     el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a))
     el("c1").innerHTML, el("c2").innerHTML, el("c3").innerHTML = chart_donut(a), chart_rule(a), chart_cats(a)
+    step = "results"
+    render()
 
 
 # ---------- events ----------
-def err(msg=""):
-    el("err").textContent = msg
-
-
-def on_submit(e):
+def on_income_submit(e):
+    global step
     e.preventDefault()
     try:
         parse_positive(el("income").value, "income")
-        amt = parse_positive(el("amt").value, "amount")
     except ValueError as ex:
-        return err(str(ex))
-    err()
-    expenses.append({"category": el("cat").value, "amount": amt})
-    el("amt").value = ""
+        el("income-err").textContent = str(ex)
+        return
+    el("income-err").textContent = ""
+    step = "expense"
     render()
 
 
-def remove(i):
-    expenses.pop(i)
+def back_to_income(e):
+    global step
+    step = "income"
     render()
 
 
-def on_example(e):
-    global expenses
-    el("income").value = "3200"
-    expenses = [{"category": c, "amount": v} for c, v in
-                [("Housing", 1100), ("Groceries", 380), ("Transport", 150), ("Utilities", 120), ("Dining out", 290),
-                 ("Entertainment", 140), ("Subscriptions", 45), ("Shopping", 210), ("Savings & investing", 150)]]
-    err()
+def edit_expenses(e):
+    global step
+    step = "expense"
     render()
 
 
-def on_clear(e):
-    expenses.clear()
-    el("income").value = el("amt").value = ""
-    err()
+def start_over(e):
+    global step, expenses
+    step, expenses = "income", []
+    el("income").value = ""
+    for i in range(len(GROUPS)):
+        el(f"expense-{i}").value = ""
     render()
 
 
-el("cat").innerHTML = "".join(f"<option>{html.escape(c)}</option>" for c in GROUPS)
-el("form").addEventListener("submit", create_proxy(on_submit))
-el("income").addEventListener("input", create_proxy(lambda e: render()))
-el("example").addEventListener("click", create_proxy(on_example))
-el("clear").addEventListener("click", create_proxy(on_clear))
+def build_expense_fields():
+    groups = {"Needs": [], "Wants": [], "Savings": []}
+    for category, group in GROUPS.items():
+        groups[group].append(category)
+    blocks = []
+    category_index = {c: i for i, c in enumerate(GROUPS)}
+    for group, categories in groups.items():
+        fields = []
+        for category in categories:
+            idx = category_index[category]
+            fields.append(f'<div class="category-field"><label for="expense-{idx}">{html.escape(category)} <details class="help"><summary aria-label="{html.escape(category)} help">?</summary><p>Enter your monthly {html.escape(category.lower())} total.</p></details></label><input id="expense-{idx}" type="number" min="0" step="0.01" placeholder="$ 0" inputmode="decimal"></div>')
+        blocks.append(f'<section class="category-group"><h3>{group}</h3>{"".join(fields)}</section>')
+    el("expense-fields").innerHTML = "".join(blocks)
+
+
+build_expense_fields()
+el("income-form").addEventListener("submit", create_proxy(on_income_submit))
+el("back-income").addEventListener("click", create_proxy(back_to_income))
+el("show-results").addEventListener("click", create_proxy(lambda e: show_results()))
+el("edit-expenses").addEventListener("click", create_proxy(edit_expenses))
+el("start-over").addEventListener("click", create_proxy(start_over))
 el("loading").hidden = True
 render()
