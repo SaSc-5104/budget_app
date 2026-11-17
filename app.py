@@ -90,6 +90,31 @@ def recommendations(a, monthly=True):
     return recs
 
 
+def budget_insights(a):
+    positive, negative = [], []
+    if a["left"] >= 0:
+        positive.append(f"Income covers expenses, with {money(a['left'])} left over.")
+    else:
+        negative.append(f"Expenses exceed income by {money(-a['left'])}.")
+    if a["pct"]["Needs"] <= 50:
+        positive.append(f"Needs use {a['pct']['Needs']:.0f}% of income, within the 50% guideline.")
+    else:
+        negative.append(f"Needs use {a['pct']['Needs']:.0f}% of income, above the 50% guideline.")
+    if a["pct"]["Wants"] <= 30:
+        positive.append(f"Wants use {a['pct']['Wants']:.0f}% of income, within the 30% guideline.")
+    else:
+        negative.append(f"Wants use {a['pct']['Wants']:.0f}% of income, above the 30% guideline.")
+    if a["pct"]["Saved"] >= 20:
+        positive.append(f"Savings and unspent income reach {a['pct']['Saved']:.0f}%, meeting the 20% guideline.")
+    else:
+        negative.append(f"Savings are {a['pct']['Saved']:.0f}% of income, below the 20% guideline.")
+    if not positive:
+        positive.append("This report gives you a clear starting point for your budget.")
+    if not negative:
+        negative.append("No overspending or 50/30/20 guideline gaps were found.")
+    return positive, negative
+
+
 # ---------- charts: responsive, native SVG ----------
 PALETTE = ["#6D8196", "#8A9A83", "#A88D70", "#4A4A4A", "#B5A88D", "#8799A8", "#CBCBCB"]
 
@@ -186,6 +211,9 @@ def show_results():
              ("Savings", a["saved_cat"], COLORS["Saved"]), ("Unspent", max(a["left"], 0), "#CBCBCB")]
     el("split").innerHTML = "".join(f"<div style='width:{v / scale * 100:.2f}%;background:{c}'></div>" for _, v, c in parts)
     el("legend").innerHTML = "".join(f"<span><i class='dot' style='background:{c}'></i>{n} {money(v)}</span>" for n, v, c in parts)
+    positive, negative = budget_insights(a)
+    el("positives").innerHTML = "".join(f"<li>{html.escape(t)}</li>" for t in positive)
+    el("negatives").innerHTML = "".join(f"<li>{html.escape(t)}</li>" for t in negative)
     el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a, monthly_mode))
     el("c1").innerHTML, el("c2").innerHTML, el("c3").innerHTML = chart_donut(a), chart_rule(a), chart_cats(a)
     if monthly_mode:
@@ -284,11 +312,6 @@ def pdf_report_data():
 
 def download_pdf(e=None):
     window.downloadBudgetPdf(json.dumps(pdf_report_data()))
-
-
-def download_both(e=None):
-    download_csv()
-    download_pdf()
 
 
 def build_expense_fields():
@@ -441,7 +464,6 @@ el("show-results").addEventListener("click", create_proxy(lambda e: show_results
 el("edit-expenses").addEventListener("click", create_proxy(edit_expenses))
 el("download-csv").addEventListener("click", create_proxy(download_csv))
 el("download-pdf").addEventListener("click", create_proxy(download_pdf))
-el("download-both").addEventListener("click", create_proxy(download_both))
 el("compare-month").addEventListener("change", create_proxy(on_compare_change))
 el("start-over").addEventListener("click", create_proxy(start_over))
 el("loading").hidden = True

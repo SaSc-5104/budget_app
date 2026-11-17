@@ -56,6 +56,7 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 @media(max-width:580px){.mode-options{grid-template-columns:1fr}.download-actions{width:100%}.download-actions button{flex:1}}
 .compare-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0 22px}.compare-stat{background:#f5f7f8;border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}.compare-stat-title{display:block;font-size:.77rem;font-weight:650;color:var(--muted);margin-bottom:10px}.compare-stat-pair{display:grid;gap:8px}.compare-stat-pair div{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.compare-stat-pair small{font-size:.69rem;color:var(--muted)}.compare-stat-pair b{font-size:.95rem;white-space:nowrap}.compare-delta{display:inline-block;border-radius:99px;padding:4px 9px;background:#eaf0f4;color:#52677a;font-size:.72rem;font-weight:650;white-space:nowrap}.compare-delta.down{background:#edf1ef;color:#61796b}.compare-delta.flat{background:#f0f1f2;color:var(--muted)}.compare-section-title{font-size:.88rem;margin:0 0 10px}.compare-categories{display:grid;gap:8px}.compare-category{border:1px solid var(--line);border-radius:11px;padding:11px 13px}.compare-category-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:7px;font-size:.81rem}.compare-bar-line{display:grid;grid-template-columns:90px minmax(30px,1fr) 68px;align-items:center;gap:8px;margin-top:5px}.compare-bar-line small{font-size:.68rem;color:var(--muted)}.compare-bar-line>b{text-align:right;font-size:.72rem;font-weight:600}.compare-track{height:7px;border-radius:99px;background:#edf0f2;overflow:hidden}.compare-track i{display:block;height:100%;border-radius:99px;background:var(--accent)}.compare-track.previous i{background:#b7c1c9}.comparison-footnote{font-size:.72rem;color:var(--muted);text-align:center;margin:10px 0 0}
 @media(max-width:580px){.compare-summary{grid-template-columns:1fr}.compare-stat-pair{grid-template-columns:1fr 1fr}.compare-bar-line{grid-template-columns:76px minmax(20px,1fr) 58px;gap:6px}}
+.insight-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px}.insight-column{border:1px solid var(--line);border-radius:12px;padding:16px}.insight-column h3{font-size:.86rem;margin:0 0 10px}.insight-column.positive h3{color:#61796b}.insight-column.negative h3{color:#985f55}.insight-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}.insight-list li{background:#f4f6f5;border-radius:9px;padding:10px 12px;font-size:.82rem}.insight-column.negative li{background:#faf4f2}@media(max-width:580px){.insight-columns{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -82,15 +83,16 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 <div class="legend" id="legend"></div>
 </section>
 <section class="card comparison-card" id="comparison-card"><div class="comparison-controls"><h2>Compare months</h2><select id="compare-month" aria-label="Choose a month to compare"></select></div><p id="comparison-note" class="empty">This month is saved on this device. Add another month to compare.</p><div id="comparison-content" hidden><div id="comparison-table"></div></div></section>
-<section class="card"><h2>Recommendations</h2><ul class="recs" id="recs"></ul></section>
+<section class="card"><h2>Budget check-in</h2><div class="insight-columns"><div class="insight-column positive"><h3>Positives</h3><ul class="insight-list" id="positives"></ul></div><div class="insight-column negative"><h3>Negatives</h3><ul class="insight-list" id="negatives"></ul></div></div></section>
 <section class="card"><h2>Your spending at a glance</h2><div class="charts">
 <div class="chart-card"><h3 class="chart-title">Where your money goes</h3><div id="c1" aria-label="Spending by category"></div></div>
 <div class="chart-card"><h3 class="chart-title">Your plan vs guideline</h3><div id="c2" aria-label="Comparison to the 50/30/20 guideline"></div></div>
 <div class="chart-card"><h3 class="chart-title">Largest categories</h3><div id="c3" aria-label="Categories as a share of income"></div></div>
 </div></section>
-</div><div class="step-actions"><button type="button" id="edit-expenses">Edit expenses</button><div class="download-actions"><button type="button" id="download-csv">Download CSV</button> <button type="button" id="download-pdf">Download PDF</button> <button type="button" id="download-both" class="primary">Download both</button></div><button type="button" id="start-over">Start over</button></div></section>
+<section class="card"><h2>Recommendations</h2><ul class="recs" id="recs"></ul></section>
+</div><div class="step-actions"><button type="button" id="edit-expenses">Edit expenses</button><div class="download-actions"><button type="button" id="download-csv">Download CSV</button> <button type="button" id="download-pdf">Download PDF</button></div><button type="button" id="start-over">Start over</button></div></section>
 </main>
 <script src="./pdf_export.js?v=1"></script>
-<script type="py" src="./app.py?v=8" config='{"packages":["pandas","numpy"]}'></script>
+<script type="py" src="./app.py?v=10" config='{"packages":["pandas","numpy"]}'></script>
 </body>
 </html>
