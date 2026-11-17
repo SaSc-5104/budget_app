@@ -1,22 +1,23 @@
 # Budget Tracker
 
-A browser-based budgeting tool. Enter your monthly income, add expenses by category and amount, and get a visual breakdown plus recommendations based on the 50/30/20 rule (50% needs, 30% wants, 20% savings). Built with Python (Pandas, NumPy, Matplotlib) running in the browser via PyScript, with a plain HTML/CSS interface.
+A browser-based budgeting tool. Choose monthly tracking or a longer-term report, enter income and expenses, and get a visual breakdown plus recommendations based on the 50/30/20 rule. Monthly budgets can be compared with other saved months. Download a CSV, a PDF report with charts, or both.
 
 ## Run locally
 1. Install Python 3.10+.
 2. In this folder run: `python -m http.server 8000`
 3. Open http://localhost:8000 (internet needed to load PyScript). The first load takes ~15 seconds.
 
-The browser loads Pandas, NumPy, and Matplotlib itself (listed in `requirements.txt` and in the `config` of `index.html`), so no `pip install` is needed.
+The browser loads Pandas and NumPy through PyScript, so no `pip install` is needed. Monthly reports are saved in the browser on the current device.
 
 ## Use online (GitHub Pages)
 Push this folder to a GitHub repo, then Settings > Pages > Deploy from branch > `main` / root. Your link will be `https://<username>.github.io/<repo>/`.
 
 ## How to use
-1. Type your monthly income after tax.
-2. Pick a category, enter a monthly amount, and click "Add expense" (repeat). Remove mistakes with "Remove".
-3. Results update automatically. "Try an example" fills in sample data.
+1. Choose month-by-month tracking or a longer-term report.
+2. Enter income and applicable category expenses for the same period.
+3. View the report and choose CSV, PDF, or both to download.
 
 ## Files
 - `index.html`: interface and styling
-- `app.py`: Python logic (validation, Pandas analysis, recommendations, Matplotlib charts)
+- `app.py`: Python logic, validation, analysis, recommendations, and CSV export
+- `pdf_export.js`: client-side PDF report and vector charts

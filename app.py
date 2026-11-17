@@ -23,6 +23,8 @@ MAX_AMOUNT = 1_000_000_000
 expenses = []  # list of {"category": str, "amount": float}
 step = "income"
 saved_months = {}
+month_proxies = []
+monthly_mode = True
 
 
 def el(i):
@@ -62,25 +64,25 @@ def analyze(income, items):
             "pct": {"Needs": needs / income * 100, "Wants": wants / income * 100, "Saved": saved / income * 100}}
 
 
-def recommendations(a):
+def recommendations(a, monthly=True):
     inc, recs = a["income"], []
     by_cat = a["by_cat"]
     wants_by_cat = by_cat[[c for c in by_cat.index if GROUPS.get(c, "Wants") == "Wants"]]
     if a["left"] < 0:
-        recs.append(("warn", f"You are spending {money(-a['left'])} more than you earn each month. Start with your largest 'wants' category"
+        recs.append(("warn", f"You are spending {money(-a['left'])} more than your income for this period. Start with your largest 'wants' category"
                      + (f", {wants_by_cat.index[0]} ({money(wants_by_cat.iloc[0])})." if len(wants_by_cat) else ".")))
     save_pct = a["pct"]["Saved"]
     if a["left"] >= 0 and save_pct < 20:
-        recs.append(("tip", f"You save {save_pct:.0f}% of your income. Saving 20% would mean putting aside {money(inc * 0.2 - a['saved'])} more per month."))
+        recs.append(("tip", f"You save {save_pct:.0f}% of your income. Putting aside {money(inc * 0.2 - a['saved'])} more would bring you to the 20% guideline."))
     if a["pct"]["Needs"] > 50:
         recs.append(("warn" if a["pct"]["Needs"] > 60 else "tip", f"Essentials take {a['pct']['Needs']:.0f}% of income (guideline: 50%). Review your biggest need, {by_cat[[c for c in by_cat.index if GROUPS.get(c) == 'Needs']].index[0]}, for savings such as a cheaper plan or provider."))
     if a["pct"]["Wants"] > 30 and len(wants_by_cat):
         cut = a["wants"] - inc * 0.3
-        recs.append(("tip", f"Wants are {a['pct']['Wants']:.0f}% of income (guideline: 30%). Trimming {money(cut)}, starting with {wants_by_cat.index[0]}, would bring you in line."))
+        recs.append(("tip", f"Wants are {a['pct']['Wants']:.0f}% of income (guideline: 30%). Trimming {money(cut)} from this period's budget, starting with {wants_by_cat.index[0]}, would bring you in line."))
     if "Housing" in by_cat.index and by_cat["Housing"] / inc > 0.35:
         recs.append(("warn", f"Housing is {by_cat['Housing'] / inc:.0%} of income. Above about 30-35% it tends to squeeze the rest of your budget."))
     needs_total = a["needs"]
-    if a["saved"] > 0 and needs_total > 0:
+    if monthly and a["saved"] > 0 and needs_total > 0:
         months = 3 * needs_total / a["saved"]
         recs.append(("tip", f"An emergency fund of 3 months of essentials is {money(3 * needs_total)}. At your current saving rate you would reach it in about {months:.0f} months."))
     if save_pct >= 20 and a["pct"]["Wants"] <= 30 and a["left"] >= 0:
@@ -132,6 +134,8 @@ def render():
         el(f"{name}-step").hidden = step != name
     for i in range(1, 4):
         el(f"p{i}").className = "active" if i == {"income": 1, "expense": 2, "results": 3}[step] else ""
+    el("month-chooser").hidden = not monthly_mode
+    el("comparison-card").hidden = not monthly_mode
 
 
 def show_results():
@@ -157,18 +161,19 @@ def show_results():
     el("expense-err").textContent = ""
     expenses = entries
     a = analyze(income, expenses)
-    month = el("budget-month").value
-    if len(month) != 7 or month[4] != "-":
-        el("expense-err").textContent = "Choose a month to continue."
-        return
-    month_record = {"income": income, "total": a["total"], "left": a["left"],
-                    "needs": a["needs"], "wants": a["wants"], "saved": a["saved"],
-                    "categories": {item["category"]: item["amount"] for item in expenses}}
-    saved_months[month] = month_record
-    try:
-        window.localStorage.setItem("budget-months", json.dumps(saved_months))
-    except Exception:
-        pass
+    month = el("budget-month").value if monthly_mode else ""
+    if monthly_mode:
+        if len(month) != 7 or month[4] != "-":
+            el("expense-err").textContent = "Choose a month to continue."
+            return
+        month_record = {"income": income, "total": a["total"], "left": a["left"],
+                        "needs": a["needs"], "wants": a["wants"], "saved": a["saved"],
+                        "categories": {item["category"]: item["amount"] for item in expenses}}
+        saved_months[month] = month_record
+        try:
+            window.localStorage.setItem("budget-months", json.dumps(saved_months))
+        except Exception:
+            pass
     big = el("big")
     if a["left"] >= 0:
         big.className, big.textContent = "big", f"{money(a['left'])} left"
@@ -181,9 +186,10 @@ def show_results():
              ("Savings", a["saved_cat"], COLORS["Saved"]), ("Unspent", max(a["left"], 0), "#CBCBCB")]
     el("split").innerHTML = "".join(f"<div style='width:{v / scale * 100:.2f}%;background:{c}'></div>" for _, v, c in parts)
     el("legend").innerHTML = "".join(f"<span><i class='dot' style='background:{c}'></i>{n} {money(v)}</span>" for n, v, c in parts)
-    el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a))
+    el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a, monthly_mode))
     el("c1").innerHTML, el("c2").innerHTML, el("c3").innerHTML = chart_donut(a), chart_rule(a), chart_cats(a)
-    render_comparison(month)
+    if monthly_mode:
+        render_comparison(month)
     step = "results"
     render()
 
@@ -199,6 +205,19 @@ def on_income_submit(e):
         return
     el("income-err").textContent = ""
     step = "expense"
+    render()
+
+
+def set_report_mode(is_monthly):
+    global monthly_mode
+    monthly_mode = is_monthly
+    el("mode-monthly").className = "mode-option selected" if monthly_mode else "mode-option"
+    el("mode-longterm").className = "mode-option" if monthly_mode else "mode-option selected"
+    el("mode-monthly").setAttribute("aria-pressed", "true" if monthly_mode else "false")
+    el("mode-longterm").setAttribute("aria-pressed", "false" if monthly_mode else "true")
+    el("expense-hint").textContent = "Monthly amounts. Leave any categories that do not apply blank." if monthly_mode else "Enter amounts for the period covered by this report. Leave others blank."
+    if monthly_mode:
+        load_month_form(el("budget-month").value)
     render()
 
 
@@ -223,14 +242,16 @@ def start_over(e):
     render()
 
 
-def download_summary(e):
+def download_csv(e=None):
     income = parse_positive(el("income").value, "income")
     a = analyze(income, expenses)
     output = io.StringIO(newline="")
     writer = csv.writer(output)
-    writer.writerow(["Monthly budget summary"])
-    writer.writerow(["Month", el("budget-month").value])
-    writer.writerow(["Monthly take-home income", f'{income:.2f}'])
+    writer.writerow(["Budget summary"])
+    writer.writerow(["Report type", "Month by month" if monthly_mode else "Longer-term report"])
+    if monthly_mode:
+        writer.writerow(["Month", month_label(el("budget-month").value)])
+    writer.writerow(["Income for period", f'{income:.2f}'])
     writer.writerow(["Total expenses", f'{a["total"]:.2f}'])
     writer.writerow(["Left over (negative means over budget)", f'{a["left"]:.2f}'])
     writer.writerow([])
@@ -239,15 +260,35 @@ def download_summary(e):
         pct = amount / income * 100
         writer.writerow([key, f"{amount:.2f}", f"{pct:.1f}%", f'{TARGET[target_key]}%'])
     writer.writerow([])
-    writer.writerow(["Category", "Group", "Monthly amount", "Share of income"])
+    writer.writerow(["Category", "Group", "Amount for period", "Share of income"])
     for item in expenses:
         writer.writerow([item["category"], GROUPS.get(item["category"], "Wants"), f'{item["amount"]:.2f}', f'{item["amount"] / income * 100:.1f}%'])
     anchor = document.createElement("a")
     anchor.href = "data:text/csv;charset=utf-8," + quote(output.getvalue())
-    anchor.download = "budget-summary.csv"
+    anchor.download = f"budget-{el('budget-month').value}.csv" if monthly_mode else "budget-summary.csv"
     document.body.appendChild(anchor)
     anchor.click()
     anchor.remove()
+
+
+def pdf_report_data():
+    income = parse_positive(el("income").value, "income")
+    a = analyze(income, expenses)
+    month = el("budget-month").value if monthly_mode else ""
+    return {"monthly": monthly_mode, "period": month_label(month) if month else "Longer-term report",
+            "income": income, "total": a["total"], "left": a["left"], "needs": a["needs"],
+            "wants": a["wants"], "saved": a["saved"], "saved_category": a["saved_cat"],
+            "categories": [{"name": item["category"], "amount": item["amount"],
+                            "group": GROUPS.get(item["category"], "Wants")} for item in expenses]}
+
+
+def download_pdf(e=None):
+    window.downloadBudgetPdf(json.dumps(pdf_report_data()))
+
+
+def download_both(e=None):
+    download_csv()
+    download_pdf()
 
 
 def build_expense_fields():
@@ -260,13 +301,17 @@ def build_expense_fields():
         fields = []
         for category in categories:
             idx = category_index[category]
-            fields.append(f'<div class="category-field"><label for="expense-{idx}">{html.escape(category)} <details class="help"><summary aria-label="{html.escape(category)} help">?</summary><p>Enter your monthly {html.escape(category.lower())} total.</p></details></label><input id="expense-{idx}" type="number" min="0" step="0.01" placeholder="$ 0" inputmode="decimal"></div>')
+            fields.append(f'<div class="category-field"><label for="expense-{idx}">{html.escape(category)} <details class="help"><summary aria-label="{html.escape(category)} help">?</summary><p>Enter your {html.escape(category.lower())} total for this budget period.</p></details></label><input id="expense-{idx}" type="number" min="0" step="0.01" placeholder="$ 0" inputmode="decimal"></div>')
         blocks.append(f'<section class="category-group"><h3>{group}</h3>{"".join(fields)}</section>')
     el("expense-fields").innerHTML = "".join(blocks)
 
 
 def month_label(key):
     return datetime.strptime(key, "%Y-%m").strftime("%B %Y")
+
+
+def short_month_label(key):
+    return datetime.strptime(key, "%Y-%m").strftime("%b %Y")
 
 
 def render_comparison(current_month):
@@ -292,28 +337,90 @@ def render_comparison_detail(current_month, compare_month):
     el("comparison-content").hidden = False
     el("comparison-note").hidden = True
     current, previous = saved_months[current_month], saved_months[compare_month]
-    labels = [("Income", "income"), ("Expenses", "total"), ("Needs", "needs"),
-              ("Wants", "wants"), ("Savings", "saved"), ("Left over", "left")]
-    rows = []
-    for label, key in labels:
+    metrics = [("Income", "income"), ("Spent", "total"), ("Left over", "left")]
+    cards = []
+    for label, key in metrics:
         now, before = current[key], previous[key]
         delta = now - before
-        rows.append(f'<tr><th scope="row">{label}</th><td>{money(now)}</td><td>{money(before)}</td><td>{"+" if delta > 0 else "−" if delta < 0 else ""}{money(abs(delta)) if delta else money(0)}</td></tr>')
+        change = "No change" if delta == 0 else f'{"Up" if delta > 0 else "Down"} {money(abs(delta))}'
+        change_class = "flat" if delta == 0 else "up" if delta > 0 else "down"
+        cards.append(f'<article class="compare-stat"><span class="compare-stat-title">{label}</span><div class="compare-stat-pair"><div><small>{month_label(current_month)}</small><b>{money(now)}</b></div><div><small>{month_label(compare_month)}</small><b>{money(before)}</b></div></div><span class="compare-delta {change_class}">{change}</span></article>')
     categories = set(current["categories"]) | set(previous["categories"])
+    changed = sorted((c for c in categories if current["categories"].get(c, 0) != previous["categories"].get(c, 0)),
+                     key=lambda c: abs(current["categories"].get(c, 0) - previous["categories"].get(c, 0)), reverse=True)
     cat_rows = []
-    for category in sorted(categories, key=lambda c: abs(current["categories"].get(c, 0) - previous["categories"].get(c, 0)), reverse=True):
+    for category in changed[:5]:
         now, before = current["categories"].get(category, 0), previous["categories"].get(category, 0)
         delta = now - before
-        cat_rows.append(f'<tr><th scope="row">{html.escape(category)}</th><td>{money(now)}</td><td>{money(before)}</td><td>{"+" if delta > 0 else "−" if delta < 0 else ""}{money(abs(delta)) if delta else money(0)}</td></tr>')
-    detail = f'<p class="comparison-caption">{month_label(current_month)} compared with {month_label(compare_month)}</p><div class="comparison-scroll"><table class="comparison-grid"><thead><tr><th>Monthly totals</th><th>{month_label(current_month)}</th><th>{month_label(compare_month)}</th><th>Change</th></tr></thead><tbody>{"".join(rows)}</tbody></table>'
-    if cat_rows:
-        detail += f'<table class="comparison-grid"><thead><tr><th>By category</th><th>{month_label(current_month)}</th><th>{month_label(compare_month)}</th><th>Change</th></tr></thead><tbody>{"".join(cat_rows)}</tbody></table>'
-    el("comparison-table").innerHTML = detail + "</div>"
+        change = f'{"Up" if delta > 0 else "Down"} {money(abs(delta))}'
+        change_class = "up" if delta > 0 else "down"
+        scale = max(now, before, 1)
+        current_width, previous_width = now / scale * 100, before / scale * 100
+        cat_rows.append(f'<article class="compare-category"><div class="compare-category-head"><b>{html.escape(category)}</b><span class="compare-delta {change_class}">{change}</span></div><div class="compare-bar-line"><small>{short_month_label(current_month)}</small><div class="compare-track"><i style="width:{current_width:.1f}%"></i></div><b>{money(now)}</b></div><div class="compare-bar-line"><small>{short_month_label(compare_month)}</small><div class="compare-track previous"><i style="width:{previous_width:.1f}%"></i></div><b>{money(before)}</b></div></article>')
+    category_content = "".join(cat_rows) if cat_rows else '<p class="empty">No category spending changed between these months.</p>'
+    detail = f'<p class="comparison-caption">{month_label(current_month)} compared with {month_label(compare_month)}</p><div class="compare-summary">{"".join(cards)}</div><h3 class="compare-section-title">Biggest category changes</h3><div class="compare-categories">{category_content}</div>'
+    if len(changed) > 5:
+        detail += f'<p class="comparison-footnote">Showing the 5 largest changes across {len(changed)} categories.</p>'
+    el("comparison-table").innerHTML = detail
 
 
 def on_compare_change(e):
     current_month = el("budget-month").value
     render_comparison_detail(current_month, el("compare-month").value)
+
+
+def load_month_form(month):
+    record = saved_months.get(month)
+    if record:
+        el("income").value = str(record["income"])
+        categories = record.get("categories", {})
+        for i, category in enumerate(GROUPS):
+            amount = categories.get(category, "")
+            el(f"expense-{i}").value = str(amount) if amount else ""
+    else:
+        for i in range(len(GROUPS)):
+            el(f"expense-{i}").value = ""
+
+
+def choose_budget_month(month):
+    if month == el("budget-month").value:
+        return
+    el("budget-month").value = month
+    load_month_form(month)
+    for key in all_budget_months():
+        button = el(f"month-{key}")
+        selected = key == month
+        button.className = "month-pill selected" if selected else "month-pill"
+        button.setAttribute("aria-pressed", "true" if selected else "false")
+
+
+def all_budget_months():
+    now = datetime.now()
+    year, month = now.year, now.month
+    months = set(saved_months)
+    for _ in range(12):
+        months.add(f"{year:04d}-{month:02d}")
+        year, month = (year - 1, 12) if month == 1 else (year, month - 1)
+    return sorted(months, reverse=True)
+
+
+def build_month_choices(selected):
+    container = el("month-pills")
+    container.innerHTML = ""
+    for month in all_budget_months():
+        date = datetime.strptime(month, "%Y-%m")
+        button = document.createElement("button")
+        button.type = "button"
+        button.className = "month-pill selected" if month == selected else "month-pill"
+        button.setAttribute("aria-pressed", "true" if month == selected else "false")
+        button.setAttribute("aria-label", month_label(month))
+        button.title = month_label(month)
+        button.id = f"month-{month}"
+        button.innerHTML = f"<span>{date.strftime('%b')}</span><small>{date.year}</small>"
+        proxy = create_proxy(lambda event, key=month: choose_budget_month(key))
+        month_proxies.append(proxy)
+        button.addEventListener("click", proxy)
+        container.appendChild(button)
 
 
 build_expense_fields()
@@ -324,11 +431,17 @@ try:
         saved_months = json.loads(str(raw_months))
 except Exception:
     saved_months = {}
+load_month_form(el("budget-month").value)
+build_month_choices(el("budget-month").value)
 el("income-form").addEventListener("submit", create_proxy(on_income_submit))
+el("mode-monthly").addEventListener("click", create_proxy(lambda e: set_report_mode(True)))
+el("mode-longterm").addEventListener("click", create_proxy(lambda e: set_report_mode(False)))
 el("back-income").addEventListener("click", create_proxy(back_to_income))
 el("show-results").addEventListener("click", create_proxy(lambda e: show_results()))
 el("edit-expenses").addEventListener("click", create_proxy(edit_expenses))
-el("download-summary").addEventListener("click", create_proxy(download_summary))
+el("download-csv").addEventListener("click", create_proxy(download_csv))
+el("download-pdf").addEventListener("click", create_proxy(download_pdf))
+el("download-both").addEventListener("click", create_proxy(download_both))
 el("compare-month").addEventListener("change", create_proxy(on_compare_change))
 el("start-over").addEventListener("click", create_proxy(start_over))
 el("loading").hidden = True
