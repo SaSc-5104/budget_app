@@ -24,7 +24,7 @@ expenses = []  # list of {"category": str, "amount": float}
 step = "income"
 saved_months = {}
 month_proxies = []
-monthly_mode = True
+monthly_mode = False
 
 
 def el(i):
@@ -121,6 +121,8 @@ PALETTE = ["#6D8196", "#8A9A83", "#A88D70", "#4A4A4A", "#B5A88D", "#8799A8", "#C
 
 def chart_donut(a):
     vals = list(a["by_cat"].items())
+    if not vals or a["total"] <= 0:
+        return '<div class="chart-empty"><span class="chart-empty-mark" aria-hidden="true">—</span><strong>No expense data yet</strong><span>Add an expense to see your spending breakdown.</span></div>'
     if len(vals) > 6:
         vals = vals[:6] + [("Everything else", sum(v for _, v in vals[6:]))]
     total, circumference, offset = sum(v for _, v in vals), 2 * np.pi * 42, 0
@@ -202,7 +204,7 @@ def show_results():
     big = el("big")
     if a["left"] >= 0:
         big.className, big.textContent = "big", f"{money(a['left'])} left"
-        el("bigsub").textContent = f"of {money(income)} after {money(a['total'])} in expenses ({a['saved'] / income:.0%} saved or unspent)."
+        el("bigsub").textContent = f"of {money(income)}"
     else:
         big.className, big.textContent = "big bad", f"{money(-a['left'])} over"
         el("bigsub").textContent = f"Expenses of {money(a['total'])} exceed your income of {money(income)}."
@@ -316,6 +318,7 @@ def download_pdf(e=None):
 
 def build_expense_fields():
     groups = {"Needs": [], "Wants": [], "Savings": []}
+    descriptions = {"Needs": "Core costs", "Wants": "Flexible spending", "Savings": "Saving and investing"}
     for category, group in GROUPS.items():
         groups[group].append(category)
     blocks = []
@@ -324,8 +327,8 @@ def build_expense_fields():
         fields = []
         for category in categories:
             idx = category_index[category]
-            fields.append(f'<div class="category-field"><label for="expense-{idx}">{html.escape(category)} <details class="help"><summary aria-label="{html.escape(category)} help">?</summary><p>Enter your {html.escape(category.lower())} total for this budget period.</p></details></label><input id="expense-{idx}" type="number" min="0" step="0.01" placeholder="$ 0" inputmode="decimal"></div>')
-        blocks.append(f'<section class="category-group"><h3>{group}</h3>{"".join(fields)}</section>')
+            fields.append(f'<div class="category-field"><label for="expense-{idx}">{html.escape(category)}</label><input id="expense-{idx}" type="number" min="0" step="0.01" placeholder="$ 0" inputmode="decimal"></div>')
+        blocks.append(f'<section class="category-group {group.lower()}"><h3><span class="group-mark">{group[0]}</span><span>{group}<small>{descriptions[group]}</small></span></h3>{"".join(fields)}</section>')
     el("expense-fields").innerHTML = "".join(blocks)
 
 
@@ -454,7 +457,8 @@ try:
         saved_months = json.loads(str(raw_months))
 except Exception:
     saved_months = {}
-load_month_form(el("budget-month").value)
+if monthly_mode:
+    load_month_form(el("budget-month").value)
 build_month_choices(el("budget-month").value)
 el("income-form").addEventListener("submit", create_proxy(on_income_submit))
 el("mode-monthly").addEventListener("click", create_proxy(lambda e: set_report_mode(True)))
