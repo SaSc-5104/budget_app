@@ -119,10 +119,14 @@ def budget_insights(a):
 PALETTE = ["#6D8196", "#8A9A83", "#A88D70", "#4A4A4A", "#B5A88D", "#8799A8", "#CBCBCB"]
 
 
+def chart_empty():
+    return '<div class="chart-empty"><span class="chart-empty-mark" aria-hidden="true">—</span><strong>No expense data yet</strong><span>Add an expense to see your spending breakdown.</span></div>'
+
+
 def chart_donut(a):
     vals = list(a["by_cat"].items())
     if not vals or a["total"] <= 0:
-        return '<div class="chart-empty"><span class="chart-empty-mark" aria-hidden="true">—</span><strong>No expense data yet</strong><span>Add an expense to see your spending breakdown.</span></div>'
+        return chart_empty()
     if len(vals) > 6:
         vals = vals[:6] + [("Everything else", sum(v for _, v in vals[6:]))]
     total, circumference, offset = sum(v for _, v in vals), 2 * np.pi * 42, 0
@@ -148,6 +152,8 @@ def chart_rule(a):
 
 def chart_cats(a):
     s = (a["by_cat"] / a["income"] * 100).sort_values(ascending=False).head(7)
+    if s.empty:
+        return chart_empty()
     rows = []
     for category, value in s.items():
         color = COLORS["Saved"] if GROUPS.get(category) == "Savings" else COLORS["Needs"] if GROUPS.get(category) == "Needs" else COLORS["Wants"]
@@ -328,7 +334,7 @@ def build_expense_fields():
         for category in categories:
             idx = category_index[category]
             fields.append(f'<div class="category-field"><label for="expense-{idx}">{html.escape(category)}</label><input id="expense-{idx}" type="number" min="0" step="0.01" placeholder="$ 0" inputmode="decimal"></div>')
-        blocks.append(f'<section class="category-group {group.lower()}"><h3><span class="group-mark">{group[0]}</span><span>{group}<small>{descriptions[group]}</small></span></h3>{"".join(fields)}</section>')
+        blocks.append(f'<section class="category-group {group.lower()}"><h3>{group}<small>{descriptions[group]}</small></h3>{"".join(fields)}</section>')
     el("expense-fields").innerHTML = "".join(blocks)
 
 
