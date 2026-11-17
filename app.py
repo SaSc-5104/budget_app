@@ -1,4 +1,4 @@
-"""Budget Tracker: input (income + expenses) -> processing (Pandas) -> output (summary, Matplotlib charts, recommendations)."""
+"""Budget Tracker: browser-side budget analysis with responsive SVG charts."""
 import html
 import pandas as pd
 import numpy as np
