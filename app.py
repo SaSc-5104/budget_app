@@ -24,7 +24,6 @@ expenses = []  # list of {"category": str, "amount": float}
 step = "dashboard"
 saved_months = {}
 month_proxies = []
-dashboard_proxies = []
 monthly_mode = False
 
 
@@ -257,7 +256,9 @@ def set_report_mode(is_monthly):
     el("mode-longterm").className = "mode-option" if monthly_mode else "mode-option selected"
     el("mode-monthly").setAttribute("aria-pressed", "true" if monthly_mode else "false")
     el("mode-longterm").setAttribute("aria-pressed", "false" if monthly_mode else "true")
-    el("expense-hint").textContent = "Monthly amounts. Leave any categories that do not apply blank." if monthly_mode else "Enter amounts for the period covered by this report. Leave others blank."
+    hint = el("expense-hint")
+    if hint is not None:
+        hint.textContent = "Monthly amounts. Leave any categories that do not apply blank." if monthly_mode else "Enter amounts for the period covered by this report. Leave others blank."
     if monthly_mode:
         load_month_form(el("budget-month").value)
     if step != "dashboard":
@@ -477,6 +478,9 @@ def all_budget_months():
 
 
 def build_month_choices(selected):
+    for proxy in month_proxies:
+        proxy.destroy()
+    month_proxies.clear()
     container = el("month-pills")
     container.innerHTML = ""
     for month in all_budget_months():
@@ -496,9 +500,6 @@ def build_month_choices(selected):
 
 
 def render_dashboard():
-    for proxy in dashboard_proxies:
-        proxy.destroy()
-    dashboard_proxies.clear()
     months = sorted(saved_months, reverse=True)
     stats = el("dashboard-stats")
     if not months:
@@ -512,17 +513,40 @@ def render_dashboard():
     stats.hidden = False
     stats.innerHTML = f'<div class="dashboard-stat"><small>Months saved</small><b>{len(months)}</b></div><div class="dashboard-stat"><small>Latest budget</small><b>{month_label(months[0])}</b></div><div class="dashboard-stat"><small>{balance_label}</small><b>{balance}</b></div>'
     cards = []
-    review_months = months[:6]
     for month in months[:6]:
         record = saved_months[month]
         label = "Left over" if record["left"] >= 0 else "Over budget"
         amount = money(abs(record["left"]))
-        cards.append(f'<article class="saved-budget"><div class="saved-budget-head"><b>{month_label(month)}</b><span>Monthly</span></div><div class="saved-budget-values"><div><small>Income</small><strong>{money(record["income"])}</strong></div><div><small>Expenses</small><strong>{money(record["total"])}</strong></div><div><small>{label}</small><strong>{amount}</strong></div></div><button type="button" id="review-{month}">View report</button></article>')
-        proxy = create_proxy(lambda event, key=month: view_saved_month(key))
-        dashboard_proxies.append(proxy)
+        cards.append(f'<article class="saved-budget"><div class="saved-budget-head"><b>{month_label(month)}</b><span>Monthly</span></div><div class="saved-budget-values"><div><small>Income</small><strong>{money(record["income"])}</strong></div><div><small>Expenses</small><strong>{money(record["total"])}</strong></div><div><small>{label}</small><strong>{amount}</strong></div></div><div class="saved-budget-actions"><button type="button" data-action="view" data-month="{month}">View report</button><button type="button" class="delete-month" data-action="delete" data-month="{month}" aria-label="Delete {month_label(month)} budget">Delete</button></div></article>')
     el("saved-budgets").innerHTML = "".join(cards)
-    for month, proxy in zip(review_months, dashboard_proxies):
-        el(f"review-{month}").addEventListener("click", proxy)
+
+
+def delete_saved_month(month):
+    global saved_months
+    if month not in saved_months:
+        return
+    saved_months.pop(month)
+    try:
+        window.localStorage.setItem("budget-months", json.dumps(saved_months))
+    except Exception:
+        pass
+    if el("budget-month").value == month:
+        el("budget-month").value = datetime.now().strftime("%Y-%m")
+        el("income").value = ""
+        for i in range(len(GROUPS)):
+            el(f"expense-{i}").value = ""
+    build_month_choices(el("budget-month").value)
+    render_dashboard()
+
+
+def on_dashboard_action(e):
+    target = e.target
+    action = target.getAttribute("data-action")
+    month = target.getAttribute("data-month")
+    if action == "delete":
+        delete_saved_month(month)
+    elif action == "view":
+        view_saved_month(month)
 
 
 build_expense_fields()
@@ -550,4 +574,6 @@ el("download-pdf").addEventListener("click", create_proxy(download_pdf))
 el("compare-month").addEventListener("change", create_proxy(on_compare_change))
 el("start-over").addEventListener("click", create_proxy(start_over))
 el("loading").hidden = True
+dashboard_action_proxy = create_proxy(on_dashboard_action)
+el("saved-budgets").addEventListener("click", dashboard_action_proxy)
 render()

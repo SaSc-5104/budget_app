@@ -62,6 +62,7 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 .dashboard-step{max-width:860px}.dashboard-hero{padding:46px 28px;text-align:center;background:linear-gradient(135deg,#fff 0%,#f5f7f8 100%)}.dashboard-hero h2{font-size:1.8rem;letter-spacing:-.035em;margin:0 0 8px}.dashboard-hero p{color:var(--muted);max-width:48ch;margin:0 auto 20px}.dashboard-hero button{min-width:190px}.dashboard-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}.dashboard-stat{background:white;border:1px solid var(--line);border-radius:12px;padding:15px}.dashboard-stat small{display:block;color:var(--muted);font-size:.72rem;margin-bottom:4px}.dashboard-stat b{font-size:1.05rem}.saved-budget-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.saved-budget{border:1px solid var(--line);border-radius:12px;padding:15px}.saved-budget-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}.saved-budget-head b{font-size:.9rem}.saved-budget-head span{font-size:.7rem;color:var(--muted)}.saved-budget-values{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.saved-budget-values small{display:block;color:var(--muted);font-size:.68rem}.saved-budget-values strong{font-size:.9rem}.saved-budget button{width:100%;font-size:.82rem}.dashboard-empty{text-align:center;padding:24px 12px;color:var(--muted);font-size:.88rem}
 #progress[hidden],.dashboard-stats[hidden]{display:none}
 .dashboard-hero button.primary{width:auto;margin:0}
+.saved-budget-actions{display:grid;grid-template-columns:1fr auto;gap:8px}.saved-budget-actions button{width:auto}.saved-budget-actions .delete-month{border-color:#ead8d4;color:#985f55;background:#fff}.saved-budget-actions .delete-month:hover{background:#faf0ed}
 @media(max-width:580px){.dashboard-hero{padding:32px 18px}.dashboard-hero h2{font-size:1.5rem}.dashboard-stats{grid-template-columns:1fr}}
 </style>
 </head>
@@ -104,6 +105,6 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 </div><div class="step-actions"><button type="button" id="go-dashboard">Dashboard</button><button type="button" id="edit-expenses">Edit expenses</button><div class="download-actions"><button type="button" id="download-csv">Download CSV</button> <button type="button" id="download-pdf">Download PDF</button></div><button type="button" id="start-over">Start over</button></div></section>
 </main>
 <script src="./pdf_export.js?v=1"></script>
-<script type="py" src="./app.py?v=18" config='{"packages":["pandas","numpy"]}'></script>
+<script type="py" src="./app.py?v=20" config='{"packages":["pandas","numpy"]}'></script>
 </body>
 </html>
