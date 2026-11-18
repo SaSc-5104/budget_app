@@ -21,9 +21,10 @@ TARGET = {"Needs": 50, "Wants": 30, "Saved": 20}
 COLORS = {"Needs": "#6D8196", "Wants": "#4A4A4A", "Saved": "#8A9A83"}
 MAX_AMOUNT = 1_000_000_000
 expenses = []  # list of {"category": str, "amount": float}
-step = "income"
+step = "dashboard"
 saved_months = {}
 month_proxies = []
+dashboard_proxies = []
 monthly_mode = False
 
 
@@ -163,8 +164,13 @@ def chart_cats(a):
 
 # ---------- rendering ----------
 def render():
+    el("dashboard-step").hidden = step != "dashboard"
     for name in ("income", "expense", "results"):
         el(f"{name}-step").hidden = step != name
+    el("progress").hidden = step == "dashboard"
+    if step == "dashboard":
+        render_dashboard()
+        return
     for i in range(1, 4):
         el(f"p{i}").className = "active" if i == {"income": 1, "expense": 2, "results": 3}[step] else ""
     el("month-chooser").hidden = not monthly_mode
@@ -254,13 +260,47 @@ def set_report_mode(is_monthly):
     el("expense-hint").textContent = "Monthly amounts. Leave any categories that do not apply blank." if monthly_mode else "Enter amounts for the period covered by this report. Leave others blank."
     if monthly_mode:
         load_month_form(el("budget-month").value)
-    render()
+    if step != "dashboard":
+        render()
 
 
 def back_to_income(e):
     global step
     step = "income"
     render()
+
+
+def begin_budget(e=None):
+    global step
+    set_report_mode(False)
+    el("income").value = ""
+    el("income-err").textContent = ""
+    el("expense-err").textContent = ""
+    for i in range(len(GROUPS)):
+        el(f"expense-{i}").value = ""
+    step = "income"
+    render()
+
+
+def go_dashboard(e=None):
+    global step
+    step = "dashboard"
+    render()
+
+
+def view_saved_month(month):
+    global step
+    set_report_mode(True)
+    el("budget-month").value = month
+    load_month_form(month)
+    for key in all_budget_months():
+        button = el(f"month-{key}")
+        selected = key == month
+        button.className = "month-pill selected" if selected else "month-pill"
+        button.setAttribute("aria-pressed", "true" if selected else "false")
+    step = "expense"
+    render()
+    show_results()
 
 
 def edit_expenses(e):
@@ -455,6 +495,36 @@ def build_month_choices(selected):
         container.appendChild(button)
 
 
+def render_dashboard():
+    for proxy in dashboard_proxies:
+        proxy.destroy()
+    dashboard_proxies.clear()
+    months = sorted(saved_months, reverse=True)
+    stats = el("dashboard-stats")
+    if not months:
+        stats.hidden = True
+        stats.innerHTML = ""
+        el("saved-budgets").innerHTML = '<p class="dashboard-empty">Your saved monthly budgets will appear here.</p>'
+        return
+    latest = saved_months[months[0]]
+    balance_label = "Left over" if latest["left"] >= 0 else "Over budget"
+    balance = money(abs(latest["left"]))
+    stats.hidden = False
+    stats.innerHTML = f'<div class="dashboard-stat"><small>Months saved</small><b>{len(months)}</b></div><div class="dashboard-stat"><small>Latest budget</small><b>{month_label(months[0])}</b></div><div class="dashboard-stat"><small>{balance_label}</small><b>{balance}</b></div>'
+    cards = []
+    review_months = months[:6]
+    for month in months[:6]:
+        record = saved_months[month]
+        label = "Left over" if record["left"] >= 0 else "Over budget"
+        amount = money(abs(record["left"]))
+        cards.append(f'<article class="saved-budget"><div class="saved-budget-head"><b>{month_label(month)}</b><span>Monthly</span></div><div class="saved-budget-values"><div><small>Income</small><strong>{money(record["income"])}</strong></div><div><small>Expenses</small><strong>{money(record["total"])}</strong></div><div><small>{label}</small><strong>{amount}</strong></div></div><button type="button" id="review-{month}">View report</button></article>')
+        proxy = create_proxy(lambda event, key=month: view_saved_month(key))
+        dashboard_proxies.append(proxy)
+    el("saved-budgets").innerHTML = "".join(cards)
+    for month, proxy in zip(review_months, dashboard_proxies):
+        el(f"review-{month}").addEventListener("click", proxy)
+
+
 build_expense_fields()
 el("budget-month").value = datetime.now().strftime("%Y-%m")
 try:
@@ -467,6 +537,9 @@ if monthly_mode:
     load_month_form(el("budget-month").value)
 build_month_choices(el("budget-month").value)
 el("income-form").addEventListener("submit", create_proxy(on_income_submit))
+el("start-budget").addEventListener("click", create_proxy(begin_budget))
+el("income-dashboard").addEventListener("click", create_proxy(go_dashboard))
+el("go-dashboard").addEventListener("click", create_proxy(go_dashboard))
 el("mode-monthly").addEventListener("click", create_proxy(lambda e: set_report_mode(True)))
 el("mode-longterm").addEventListener("click", create_proxy(lambda e: set_report_mode(False)))
 el("back-income").addEventListener("click", create_proxy(back_to_income))
