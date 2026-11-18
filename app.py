@@ -283,6 +283,24 @@ def begin_budget(e=None):
     render()
 
 
+def begin_month_budget(month):
+    global step
+    set_report_mode(True)
+    el("income").value = ""
+    el("income-err").textContent = ""
+    el("expense-err").textContent = ""
+    for i in range(len(GROUPS)):
+        el(f"expense-{i}").value = ""
+    el("budget-month").value = month
+    for key in all_budget_months():
+        button = el(f"month-{key}")
+        selected = key == month
+        button.className = "month-pill selected" if selected else "month-pill"
+        button.setAttribute("aria-pressed", "true" if selected else "false")
+    step = "income"
+    render()
+
+
 def go_dashboard(e=None):
     global step
     step = "dashboard"
@@ -470,7 +488,9 @@ def choose_budget_month(month):
 def all_budget_months():
     now = datetime.now()
     year, month = now.year, now.month
-    months = set(saved_months)
+    saved_years = {int(key[:4]) for key in saved_months}
+    months = {f"{saved_year:04d}-{month_number:02d}"
+              for saved_year in saved_years for month_number in range(1, 13)}
     for _ in range(12):
         months.add(f"{year:04d}-{month:02d}")
         year, month = (year - 1, 12) if month == 1 else (year, month - 1)
@@ -505,20 +525,32 @@ def render_dashboard():
     if not months:
         stats.hidden = True
         stats.innerHTML = ""
-        el("saved-budgets").innerHTML = '<p class="dashboard-empty">Your saved monthly budgets will appear here.</p>'
-        return
-    latest = saved_months[months[0]]
-    balance_label = "Left over" if latest["left"] >= 0 else "Over budget"
-    balance = money(abs(latest["left"]))
-    stats.hidden = False
-    stats.innerHTML = f'<div class="dashboard-stat"><small>Months saved</small><b>{len(months)}</b></div><div class="dashboard-stat"><small>Latest budget</small><b>{month_label(months[0])}</b></div><div class="dashboard-stat"><small>{balance_label}</small><b>{balance}</b></div>'
-    cards = []
-    for month in months[:6]:
-        record = saved_months[month]
-        label = "Left over" if record["left"] >= 0 else "Over budget"
-        amount = money(abs(record["left"]))
-        cards.append(f'<article class="saved-budget"><div class="saved-budget-head"><b>{month_label(month)}</b><span>Monthly</span></div><div class="saved-budget-values"><div><small>Income</small><strong>{money(record["income"])}</strong></div><div><small>Expenses</small><strong>{money(record["total"])}</strong></div><div><small>{label}</small><strong>{amount}</strong></div></div><div class="saved-budget-actions"><button type="button" data-action="view" data-month="{month}">View report</button><button type="button" class="delete-month" data-action="delete" data-month="{month}" aria-label="Delete {month_label(month)} budget">Delete</button></div></article>')
-    el("saved-budgets").innerHTML = "".join(cards)
+    else:
+        latest = saved_months[months[0]]
+        balance_label = "Left over" if latest["left"] >= 0 else "Over budget"
+        balance = money(abs(latest["left"]))
+        stats.hidden = False
+        stats.innerHTML = f'<div class="dashboard-stat"><small>Months saved</small><b>{len(months)}</b></div><div class="dashboard-stat"><small>Latest budget</small><b>{month_label(months[0])}</b></div><div class="dashboard-stat"><small>{balance_label}</small><b>{balance}</b></div>'
+    years = sorted({datetime.now().year} | {int(key[:4]) for key in months}, reverse=True)
+    calendars = []
+    for year in years:
+        tiles = []
+        for month_number in range(1, 13):
+            key = f"{year:04d}-{month_number:02d}"
+            month_name = datetime(year, month_number, 1).strftime("%b")
+            record = saved_months.get(key)
+            if record:
+                if record["left"] > 0:
+                    balance = f'{money(record["left"])} left'
+                elif record["left"] < 0:
+                    balance = f'{money(-record["left"])} over'
+                else:
+                    balance = "Balanced"
+                tiles.append(f'<div class="calendar-cell"><button type="button" class="month-tile saved" data-action="view" data-month="{key}" aria-label="View {month_name} {year} report"><strong>{month_name}</strong><small>Saved</small><b>{balance}</b></button><button type="button" class="calendar-delete" data-action="delete" data-month="{key}" aria-label="Delete {month_name} {year} budget">×</button></div>')
+            else:
+                tiles.append(f'<button type="button" class="month-tile empty" data-action="start" data-month="{key}" aria-label="Start a budget for {month_name} {year}"><strong>{month_name}</strong><small>Not saved</small><b>+ Add budget</b></button>')
+        calendars.append(f'<section class="calendar-year"><h3>{year}</h3><div class="month-calendar">{"".join(tiles)}</div></section>')
+    el("saved-budgets").innerHTML = "".join(calendars)
 
 
 def delete_saved_month(month):
@@ -547,6 +579,8 @@ def on_dashboard_action(e):
         delete_saved_month(month)
     elif action == "view":
         view_saved_month(month)
+    elif action == "start":
+        begin_month_budget(month)
 
 
 build_expense_fields()
