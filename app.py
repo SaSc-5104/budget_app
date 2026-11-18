@@ -579,7 +579,9 @@ def delete_saved_month(month):
 
 
 def on_dashboard_action(e):
-    target = e.target
+    target = e.target.closest("button[data-action]")
+    if target is None:
+        return
     action = target.getAttribute("data-action")
     month = target.getAttribute("data-month")
     if action == "delete":
