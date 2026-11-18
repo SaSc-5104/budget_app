@@ -244,6 +244,9 @@ def on_income_submit(e):
     except ValueError as ex:
         el("income-err").textContent = str(ex)
         return
+    if monthly_mode and not el("budget-month").value:
+        el("income-err").textContent = "Choose a month and year."
+        return
     el("income-err").textContent = ""
     step = "expense"
     render()
@@ -292,11 +295,7 @@ def begin_month_budget(month):
     for i in range(len(GROUPS)):
         el(f"expense-{i}").value = ""
     el("budget-month").value = month
-    for key in all_budget_months():
-        button = el(f"month-{key}")
-        selected = key == month
-        button.className = "month-pill selected" if selected else "month-pill"
-        button.setAttribute("aria-pressed", "true" if selected else "false")
+    build_month_choices(month)
     step = "income"
     render()
 
@@ -312,11 +311,7 @@ def view_saved_month(month):
     set_report_mode(True)
     el("budget-month").value = month
     load_month_form(month)
-    for key in all_budget_months():
-        button = el(f"month-{key}")
-        selected = key == month
-        button.className = "month-pill selected" if selected else "month-pill"
-        button.setAttribute("aria-pressed", "true" if selected else "false")
+    build_month_choices(month)
     step = "expense"
     render()
     show_results()
@@ -478,32 +473,37 @@ def choose_budget_month(month):
         return
     el("budget-month").value = month
     load_month_form(month)
-    for key in all_budget_months():
+    for month_number in range(1, 13):
+        key = f"{month[:4]}-{month_number:02d}"
         button = el(f"month-{key}")
         selected = key == month
         button.className = "month-pill selected" if selected else "month-pill"
         button.setAttribute("aria-pressed", "true" if selected else "false")
 
 
-def all_budget_months():
-    now = datetime.now()
-    year, month = now.year, now.month
-    saved_years = {int(key[:4]) for key in saved_months}
-    months = {f"{saved_year:04d}-{month_number:02d}"
-              for saved_year in saved_years for month_number in range(1, 13)}
-    for _ in range(12):
-        months.add(f"{year:04d}-{month:02d}")
-        year, month = (year - 1, 12) if month == 1 else (year, month - 1)
-    return sorted(months, reverse=True)
+def available_budget_years():
+    current_year = datetime.now().year
+    years = set(range(current_year - 10, current_year + 1))
+    years.update(int(key[:4]) for key in saved_months)
+    return sorted(years, reverse=True)
 
 
 def build_month_choices(selected):
     for proxy in month_proxies:
         proxy.destroy()
     month_proxies.clear()
+    years = available_budget_years()
+    selected_year = int(selected[:4]) if selected else (int(el("budget-year").value) if el("budget-year").value else datetime.now().year)
+    if selected_year not in years:
+        years.append(selected_year)
+        years.sort(reverse=True)
+    year_select = el("budget-year")
+    year_select.innerHTML = "".join(f'<option value="{year}">{year}</option>' for year in years)
+    year_select.value = str(selected_year)
     container = el("month-pills")
     container.innerHTML = ""
-    for month in all_budget_months():
+    for month_number in range(1, 13):
+        month = f"{selected_year:04d}-{month_number:02d}"
         date = datetime.strptime(month, "%Y-%m")
         button = document.createElement("button")
         button.type = "button"
@@ -512,11 +512,18 @@ def build_month_choices(selected):
         button.setAttribute("aria-label", month_label(month))
         button.title = month_label(month)
         button.id = f"month-{month}"
-        button.innerHTML = f"<span>{date.strftime('%b')}</span><small>{date.year}</small>"
+        button.innerHTML = f"<span>{date.strftime('%b')}</span>"
         proxy = create_proxy(lambda event, key=month: choose_budget_month(key))
         month_proxies.append(proxy)
         button.addEventListener("click", proxy)
         container.appendChild(button)
+
+
+def on_budget_year_change(e):
+    el("budget-month").value = ""
+    for i in range(len(GROUPS)):
+        el(f"expense-{i}").value = ""
+    build_month_choices("")
 
 
 def render_dashboard():
@@ -531,7 +538,7 @@ def render_dashboard():
         balance = money(abs(latest["left"]))
         stats.hidden = False
         stats.innerHTML = f'<div class="dashboard-stat"><small>Months saved</small><b>{len(months)}</b></div><div class="dashboard-stat"><small>Latest budget</small><b>{month_label(months[0])}</b></div><div class="dashboard-stat"><small>{balance_label}</small><b>{balance}</b></div>'
-    years = sorted({datetime.now().year} | {int(key[:4]) for key in months}, reverse=True)
+    years = sorted({datetime.now().year} | {int(key[:4]) for key in months})
     calendars = []
     for year in years:
         tiles = []
@@ -600,6 +607,7 @@ el("income-dashboard").addEventListener("click", create_proxy(go_dashboard))
 el("go-dashboard").addEventListener("click", create_proxy(go_dashboard))
 el("mode-monthly").addEventListener("click", create_proxy(lambda e: set_report_mode(True)))
 el("mode-longterm").addEventListener("click", create_proxy(lambda e: set_report_mode(False)))
+el("budget-year").addEventListener("change", create_proxy(on_budget_year_change))
 el("back-income").addEventListener("click", create_proxy(back_to_income))
 el("show-results").addEventListener("click", create_proxy(lambda e: show_results()))
 el("edit-expenses").addEventListener("click", create_proxy(edit_expenses))
