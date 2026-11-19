@@ -528,16 +528,6 @@ def on_budget_year_change(e):
 
 def render_dashboard():
     months = sorted(saved_months, reverse=True)
-    stats = el("dashboard-stats")
-    if not months:
-        stats.hidden = True
-        stats.innerHTML = ""
-    else:
-        latest = saved_months[months[0]]
-        balance_label = "Left over" if latest["left"] >= 0 else "Over budget"
-        balance = money(abs(latest["left"]))
-        stats.hidden = False
-        stats.innerHTML = f'<div class="dashboard-stat"><small>Months saved</small><b>{len(months)}</b></div><div class="dashboard-stat"><small>Latest budget</small><b>{month_label(months[0])}</b></div><div class="dashboard-stat"><small>{balance_label}</small><b>{balance}</b></div>'
     years = sorted({datetime.now().year} | {int(key[:4]) for key in months}, reverse=True)
     year_select = el("dashboard-calendar-year")
     selected_year = int(year_select.value) if year_select.value and int(year_select.value) in years else years[0]
