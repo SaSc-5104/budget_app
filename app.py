@@ -22,7 +22,7 @@ GUIDELINES = {
     "70/20/10": {"Needs": 70, "Wants": 20, "Saved": 10},
 }
 # Original group colors: Needs #6D8196, Wants #4A4A4A, Saved #8A9A83.
-COLORS = {"Needs": "#3B6FC4", "Wants": "#E16A45", "Saved": "#159A77"}
+COLORS = {"Needs": "#6D8196", "Wants": "#4A4A4A", "Saved": "#8A9A83"}
 MAX_AMOUNT = 1_000_000_000
 expenses = []  # list of {"category": str, "amount": float}
 step = "dashboard"
@@ -153,9 +153,9 @@ def budget_insights(a, targets):
 
 
 # ---------- charts: responsive, native SVG ----------
-# Original chart colors: #6D8196, #8A9A83, #A88D70, #4A4A4A, #B5A88D, #8799A8, #CBCBCB.
-PALETTE = ["#3B6FC4", "#159A77", "#B48310", "#E16A45", "#7C5AB5", "#169FA6", "#C54855",
-           "#8D6E63", "#4682B4", "#7A891D", "#B34F92", "#667085", "#BD5E15", "#8C6FB1"]
+# Distinct expense-category colors, separate from the app theme.
+PALETTE = ["#2E8B57", "#3478C7", "#D1495B", "#E9822B", "#8E6CCF", "#159A9C", "#C49A18",
+           "#BB5A9B", "#60A5D8", "#78A83B", "#E76F51", "#526D9A", "#A84A79", "#718096"]
 
 
 def chart_empty():
@@ -172,9 +172,9 @@ def chart_donut(a):
         pct = value / total if total else 0
         dash = circumference * pct
         color = PALETTE[i % len(PALETTE)]
-        arcs.append(f'<circle cx="60" cy="60" r="42" fill="none" stroke="{color}" stroke-width="13" style="--arc-length:{dash:.2f};--arc-gap:{circumference-dash:.2f};--arc-delay:{i * 55}ms" stroke-dashoffset="{-offset:.2f}" transform="rotate(-90 60 60)"/>')
+        arcs.append(f'<circle cx="60" cy="60" r="42" fill="none" stroke="{color}" stroke-width="13" data-category-index="{i}" style="--arc-length:{dash:.2f};--arc-gap:{circumference-dash:.2f};--arc-delay:{i * 55}ms" stroke-dashoffset="{-offset:.2f}" transform="rotate(-90 60 60)"/>')
         offset += dash
-        legend.append(f'<div class="chart-legend-row"><i style="background:{color}"></i><span>{html.escape(str(name))}</span><b>{money(value)}</b></div>')
+        legend.append(f'<div class="chart-legend-row" data-category-index="{i}" tabindex="0" role="button" aria-label="Highlight {html.escape(str(name))} in the spending chart"><i style="background:{color}"></i><span>{html.escape(str(name))}</span><b>{money(value)}</b></div>')
     return '<div class="donut-layout"><svg class="donut" viewBox="0 0 120 120" role="img" aria-label="Spending distribution">' + ''.join(arcs) + f'<text x="60" y="57" text-anchor="middle" class="donut-total">{html.escape(money(a["total"]))}</text><text x="60" y="70" text-anchor="middle" class="donut-caption">total spent</text></svg><div class="chart-legend">' + ''.join(legend) + '</div></div>'
 
 
@@ -192,8 +192,8 @@ def chart_cats(a):
     if s.empty:
         return chart_empty()
     rows = []
-    for category, value in s.items():
-        color = COLORS["Saved"] if GROUPS.get(category) == "Savings" else COLORS["Needs"] if GROUPS.get(category) == "Needs" else COLORS["Wants"]
+    for i, (category, value) in enumerate(s.items()):
+        color = PALETTE[i % len(PALETTE)]
         rows.append(f'<div class="category-row"><div class="category-label"><span>{html.escape(str(category))}</span><b>{value:.0f}%</b></div><div class="track"><i style="width:{min(value,100):.1f}%;background:{color}"></i></div></div>')
     return '<div class="category-chart">' + ''.join(rows) + '</div>'
 
@@ -268,7 +268,7 @@ def show_results():
         el("bigsub").textContent = f"Expenses of {money(a['total'])} exceed your income of {money(income)}."
     scale = max(income, a["total"], 1)
     parts = [("Needs", a["needs"], COLORS["Needs"]), ("Wants", a["wants"], COLORS["Wants"]),
-             ("Savings", a["saved_cat"], COLORS["Saved"]), ("Unspent", max(a["left"], 0), "#D6DBE4")]
+             ("Savings", a["saved_cat"], COLORS["Saved"]), ("Unspent", max(a["left"], 0), "#CBCBCB")]
     el("split").innerHTML = "".join(f"<div style='width:{v / scale * 100:.2f}%;background:{c}'></div>" for _, v, c in parts)
     el("legend").innerHTML = "".join(f"<span><i class='dot' style='background:{c}'></i>{n} {money(v)}</span>" for n, v, c in parts)
     positive, negative = budget_insights(a, targets)

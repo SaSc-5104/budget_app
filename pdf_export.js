@@ -3,10 +3,12 @@
   const PAGE_H = 792;
   // Original PDF palette: slate #6D8196, charcoal #4A4A4A, green #879987, ivory #F3F5F7, gray #CBCBCB, ink #29313A, muted #707984, line #E1E6EB.
   const palette = {
-    slate: "#3B6FC4", charcoal: "#263345", terracotta: "#E16A45", green: "#159A77",
-    ivory: "#F4F6FA", gray: "#D6DBE4", ink: "#202938", muted: "#657184",
-    line: "#E2E7EF", white: "#FFFFFF"
+    slate: "#6D8196", charcoal: "#4A4A4A", green: "#879987",
+    ivory: "#F3F5F7", gray: "#CBCBCB", ink: "#29313A", muted: "#707984",
+    line: "#E1E6EB", white: "#FFFFFF", bad: "#985F55"
   };
+  const categoryPalette = ["#2E8B57", "#3478C7", "#D1495B", "#E9822B", "#8E6CCF", "#159A9C", "#C49A18",
+    "#BB5A9B", "#60A5D8", "#78A83B", "#E76F51", "#526D9A", "#A84A79", "#718096"];
   const rgb = hex => {
     const v = hex.replace("#", "");
     return [0, 2, 4].map(i => parseInt(v.slice(i, i + 2), 16) / 255);
@@ -29,7 +31,7 @@
     };
     rect(0, 0, PAGE_W, 105, palette.charcoal);
     text(42, 43, "Budget report", 23, palette.white, true);
-    text(42, 68, data.period || "Budget summary", 11, "#E9EEF6");
+    text(42, 68, data.period || "Budget summary", 11, "#E7EBEF");
 
     const cards = [
       ["Income", data.income], ["Expenses", data.total], [data.left >= 0 ? "Left over" : "Over budget", Math.abs(data.left)]
@@ -39,13 +41,13 @@
       const x = 42 + i * 176;
       rect(x, 123, cardW, 62, palette.ivory);
       text(x + 13, 146, label, 9, palette.muted);
-      text(x + 13, 171, money(value), 17, i === 2 && data.left < 0 ? "#C54855" : palette.ink, true);
+      text(x + 13, 171, money(value), 17, i === 2 && data.left < 0 ? palette.bad : palette.ink, true);
     });
 
     text(42, 222, "Income allocation", 13, palette.ink, true);
     text(42, 239, "How this period's income is assigned", 9, palette.muted);
     const allocation = [
-      ["Needs", data.needs, palette.slate], ["Wants", data.wants, palette.terracotta],
+      ["Needs", data.needs, palette.slate], ["Wants", data.wants, palette.charcoal],
       ["Savings", data.saved_category, palette.green], ["Unspent", Math.max(data.left, 0), palette.gray]
     ];
     const allocationTotal = Math.max(Number(data.income), Number(data.total), 1);
@@ -67,7 +69,7 @@
     text(42, 340, `${data.guideline_name || "50/30/20"} guideline`, 13, palette.ink, true);
     text(42, 357, "Solid bar: your budget     Marker: guideline", 9, palette.muted);
     const ruleRows = [
-      ["Needs", data.needs, guidelines.Needs, palette.slate], ["Wants", data.wants, guidelines.Wants, palette.terracotta],
+      ["Needs", data.needs, guidelines.Needs, palette.slate], ["Wants", data.wants, guidelines.Wants, palette.charcoal],
       ["Saved", data.saved, guidelines.Saved, palette.green]
     ];
     ruleRows.forEach(([label, amount, target, fill], i) => {
@@ -75,7 +77,7 @@
       const pct = Number(amount) / Math.max(Number(data.income), 1) * 100;
       text(42, top + 9, label, 9, palette.ink, true);
       text(94, top + 9, `${Math.round(pct)}% / ${target}%`, 8, palette.muted);
-      rect(180, top, 340, 8, "#EDF0F5");
+      rect(180, top, 340, 8, "#EEF0F2");
       rect(180, top, 340 * Math.min(pct, 100) / 100, 8, fill);
       line(180 + 340 * target / 100, top - 3, 180 + 340 * target / 100, top + 11, palette.charcoal, 1.5);
     });
@@ -87,9 +89,9 @@
     categories.forEach((item, i) => {
       const top = 545 + i * 25;
       const pct = Number(item.amount) / Math.max(Number(data.income), 1) * 100;
-      const fill = item.group === "Needs" ? palette.slate : item.group === "Savings" ? palette.green : palette.terracotta;
+      const fill = categoryPalette[i % categoryPalette.length];
       text(42, top + 8, ascii(item.name).slice(0, 25), 8.5, palette.ink);
-      rect(190, top, 290, 8, "#EDF0F5");
+      rect(190, top, 290, 8, "#EEF0F2");
       rect(190, top, 290 * pct / maxPct, 8, fill);
       text(491, top + 8, `${pct.toFixed(0)}%`, 8, palette.muted);
     });
@@ -103,7 +105,7 @@
       ops = [];
       rect(0, 0, PAGE_W, 105, palette.charcoal);
       text(42, 43, "Additional categories", 23, palette.white, true);
-      text(42, 68, data.period || "Budget summary", 11, "#E9EEE7");
+      text(42, 68, data.period || "Budget summary", 11, "#E7EBEF");
       text(42, 145, "Other reported expenses", 13, palette.ink, true);
       text(42, 170, "Category", 9, palette.muted, true);
       text(310, 170, "Group", 9, palette.muted, true);
