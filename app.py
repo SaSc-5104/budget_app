@@ -254,8 +254,10 @@ def edit_expenses(e):
 
 def start_over(e):
     global step, expenses
-    step, expenses = "income", []
+    step, expenses = "dashboard", []
     el("income").value = ""
+    el("income-err").textContent = ""
+    el("expense-err").textContent = ""
     for i in range(len(GROUPS)):
         el(f"expense-{i}").value = ""
     render()
