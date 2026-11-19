@@ -59,6 +59,12 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 #expense-fields input[type=number]{appearance:textfield;-moz-appearance:textfield}
 #expense-fields input[type=number]::-webkit-inner-spin-button,#expense-fields input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .chart-empty{min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;color:var(--muted);padding:20px}.chart-empty strong{font-size:.85rem;color:var(--ink)}.chart-empty>span:last-child{font-size:.76rem}.chart-empty-mark{display:grid;place-items:center;width:34px;height:34px;margin-bottom:3px;border-radius:50%;background:#f0f3f5;color:var(--accent);font-size:1.2rem}
+.spending-profile{display:flex;align-items:center;gap:16px}.spending-profile-label{flex:0 0 auto;display:grid;gap:3px}.spending-profile-label small{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.spending-profile-label strong{font-size:.95rem;color:var(--accent)}.spending-profile p{margin:0;color:var(--muted);font-size:.84rem}.spending-profile[hidden]{display:none}@media(max-width:580px){.spending-profile{align-items:flex-start;flex-direction:column;gap:8px}}
+.split div,.track i{transform:scaleX(0);transform-origin:left;animation:budget-fill .8s cubic-bezier(.2,.75,.25,1) forwards}
+.donut circle{stroke-dasharray:0 var(--arc-gap);animation:donut-fill .9s cubic-bezier(.2,.75,.25,1) var(--arc-delay) forwards}
+@keyframes budget-fill{to{transform:scaleX(1)}}
+@keyframes donut-fill{to{stroke-dasharray:var(--arc-length) var(--arc-gap)}}
+@media(prefers-reduced-motion:reduce){.split div,.track i,.donut circle{animation:none;transform:none}.donut circle{stroke-dasharray:var(--arc-length) var(--arc-gap)}}
 .dashboard-step{max-width:860px}.dashboard-hero{padding:46px 28px;text-align:center;background:linear-gradient(135deg,#fff 0%,#f5f7f8 100%)}.dashboard-hero h2{font-size:1.8rem;letter-spacing:-.035em;margin:0 0 8px}.dashboard-hero p{color:var(--muted);max-width:48ch;margin:0 auto 20px}.dashboard-hero button{min-width:190px}.dashboard-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}.dashboard-stat{background:white;border:1px solid var(--line);border-radius:12px;padding:15px}.dashboard-stat small{display:block;color:var(--muted);font-size:.72rem;margin-bottom:4px}.dashboard-stat b{font-size:1.05rem}.saved-budget-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.saved-budget{border:1px solid var(--line);border-radius:12px;padding:15px}.saved-budget-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}.saved-budget-head b{font-size:.9rem}.saved-budget-head span{font-size:.7rem;color:var(--muted)}.saved-budget-values{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.saved-budget-values small{display:block;color:var(--muted);font-size:.68rem}.saved-budget-values strong{font-size:.9rem}.saved-budget button{width:100%;font-size:.82rem}.dashboard-empty{text-align:center;padding:24px 12px;color:var(--muted);font-size:.88rem}
 #progress[hidden],.dashboard-stats[hidden]{display:none}
 .dashboard-hero button.primary{width:auto;margin:0}
@@ -101,6 +107,7 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 <div class="split" id="split" role="img" aria-label="How your income is divided"></div>
 <div class="legend" id="legend"></div>
 </section>
+<section class="card spending-profile"><div class="spending-profile-label"><small>Your spending style</small><strong id="spending-profile">—</strong></div><p id="spending-profile-note"></p></section>
 <section class="card"><h2>Summary</h2><div class="charts">
 <div class="chart-card"><div id="c1" aria-label="Spending by category"></div></div>
 <div class="chart-card"><h3 class="chart-title">Guideline</h3><div id="c2" aria-label="Comparison to the 50/30/20 guideline"></div></div>

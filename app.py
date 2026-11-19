@@ -60,6 +60,21 @@ def analyze(income, items):
             "pct": {"Needs": needs / income * 100, "Wants": wants / income * 100, "Saved": saved / income * 100}}
 
 
+def spending_profile(a):
+    pct = a["pct"]
+    if a["left"] < 0:
+        return "Over budget", f"Your expenses are {money(-a['left'])} higher than your monthly income."
+    if pct["Saved"] >= 35:
+        return "Savings-focused", f"You save or leave unspent {pct['Saved']:.0f}% of your income, giving you room to build toward future goals."
+    if pct["Needs"] > 60:
+        return "Essentials-focused", f"Essentials use {pct['Needs']:.0f}% of your income, leaving less room for flexible spending and savings."
+    if pct["Wants"] > 40:
+        return "Lifestyle-focused", f"Flexible spending uses {pct['Wants']:.0f}% of your income and is the largest opportunity to adjust."
+    if pct["Needs"] <= 50 and pct["Wants"] <= 30 and pct["Saved"] >= 20:
+        return "Balanced", "Your spending is within the 50/30/20 guideline across essentials, flexible spending, and savings."
+    return "Finding your balance", f"Your largest share goes to {max((("essentials", pct['Needs']), ("flexible spending", pct['Wants']), ("savings", pct['Saved'])), key=lambda item: item[1])[0]}. Small adjustments can help bring your budget closer to your priorities."
+
+
 def recommendations(a, monthly=True):
     inc, recs = a["income"], []
     by_cat = a["by_cat"]
@@ -133,7 +148,7 @@ def chart_donut(a):
         pct = value / total if total else 0
         dash = circumference * pct
         color = PALETTE[i % len(PALETTE)]
-        arcs.append(f'<circle cx="60" cy="60" r="42" fill="none" stroke="{color}" stroke-width="13" stroke-dasharray="{dash:.2f} {circumference-dash:.2f}" stroke-dashoffset="{-offset:.2f}" transform="rotate(-90 60 60)"/>')
+        arcs.append(f'<circle cx="60" cy="60" r="42" fill="none" stroke="{color}" stroke-width="13" style="--arc-length:{dash:.2f};--arc-gap:{circumference-dash:.2f};--arc-delay:{i * 55}ms" stroke-dashoffset="{-offset:.2f}" transform="rotate(-90 60 60)"/>')
         offset += dash
         legend.append(f'<div class="chart-legend-row"><i style="background:{color}"></i><span>{html.escape(str(name))}</span><b>{money(value)}</b></div>')
     return '<div class="donut-layout"><svg class="donut" viewBox="0 0 120 120" role="img" aria-label="Spending distribution">' + ''.join(arcs) + f'<text x="60" y="57" text-anchor="middle" class="donut-total">{html.escape(money(a["total"]))}</text><text x="60" y="70" text-anchor="middle" class="donut-caption">total spent</text></svg><div class="chart-legend">' + ''.join(legend) + '</div></div>'
@@ -194,6 +209,9 @@ def show_results():
     el("expense-err").textContent = ""
     expenses = entries
     a = analyze(income, expenses)
+    profile, profile_note = spending_profile(a)
+    el("spending-profile").textContent = profile
+    el("spending-profile-note").textContent = profile_note
     big = el("big")
     if a["left"] >= 0:
         big.className, big.textContent = "big", f"{money(a['left'])} left"
