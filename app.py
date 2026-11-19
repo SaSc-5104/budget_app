@@ -200,42 +200,64 @@ def chart_cats(a):
 # ---------- rendering ----------
 def render():
     el("dashboard-step").hidden = step != "dashboard"
-    for name in ("income", "expense", "results"):
+    for name in ("income", "expense", "preferences", "results"):
         el(f"{name}-step").hidden = step != name
     el("progress").hidden = step == "dashboard"
     if step == "dashboard":
         return
-    for i in range(1, 4):
-        el(f"p{i}").className = "active" if i == {"income": 1, "expense": 2, "results": 3}[step] else ""
+    for i in range(1, 5):
+        el(f"p{i}").className = "active" if i == {"income": 1, "expense": 2, "preferences": 3, "results": 4}[step] else ""
 
 
-def show_results():
+def collect_expenses():
+    entries = []
+    for i, category in enumerate(GROUPS):
+        raw = el(f"expense-{i}").value.strip()
+        if not raw:
+            continue
+        try:
+            amount = float(raw)
+        except ValueError:
+            raise ValueError(f"Enter a valid amount for {category}.")
+        if not np.isfinite(amount) or amount < 0 or amount > MAX_AMOUNT:
+            raise ValueError(f"Enter an amount from 0 to {money(MAX_AMOUNT)} for {category}.")
+        if amount > 0:
+            entries.append({"category": category, "amount": round(amount, 2)})
+    return entries
+
+
+def continue_to_preferences(e=None):
     global expenses, step
     try:
-        income = parse_positive(el("income").value, "income")
-        entries = []
-        for i, category in enumerate(GROUPS):
-            raw = el(f"expense-{i}").value.strip()
-            if not raw:
-                continue
-            try:
-                amount = float(raw)
-            except ValueError:
-                raise ValueError(f"Enter a valid amount for {category}.")
-            if not np.isfinite(amount) or amount < 0 or amount > MAX_AMOUNT:
-                raise ValueError(f"Enter an amount from 0 to {money(MAX_AMOUNT)} for {category}.")
-            if amount > 0:
-                entries.append({"category": category, "amount": round(amount, 2)})
+        parse_positive(el("income").value, "income")
+        expenses = collect_expenses()
     except ValueError as ex:
         el("expense-err").textContent = str(ex)
         return
     el("expense-err").textContent = ""
-    expenses = entries
+    step = "preferences"
+    render()
+
+
+def show_results():
+    global step
+    try:
+        income = parse_positive(el("income").value, "income")
+    except ValueError as ex:
+        el("income-err").textContent = str(ex)
+        step = "income"
+        render()
+        return
     a = analyze(income, expenses)
     guideline_name, targets = current_guideline()
     profile, profile_note = spending_profile(a, targets)
     el("spending-profile").textContent = profile
     el("spending-profile-note").textContent = profile_note
+    el("guideline-summary").textContent = guideline_name
+    goal_names = {"": "General guidance", "emergency": "Build an emergency fund", "debt": "Pay down debt",
+                  "purchase": "Save for a purchase", "investing": "Invest for the long term"}
+    savings_goal = str(el("savings-goal").value)
+    el("goal-summary").textContent = f"Focus: {goal_names.get(savings_goal, 'General guidance')}"
     big = el("big")
     if a["left"] >= 0:
         big.className, big.textContent = "big", f"{money(a['left'])} left"
@@ -251,26 +273,11 @@ def show_results():
     positive, negative = budget_insights(a, targets)
     el("positives").innerHTML = "".join(f"<li>{html.escape(t)}</li>" for t in positive)
     el("negatives").innerHTML = "".join(f"<li>{html.escape(t)}</li>" for t in negative)
-    el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a, targets, str(el("savings-goal").value)))
+    el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a, targets, savings_goal))
     el("c1").innerHTML, el("c2").innerHTML, el("c3").innerHTML = chart_donut(a), chart_rule(a, targets), chart_cats(a)
     el("c2").setAttribute("aria-label", f"Comparison to the {guideline_name} guideline")
     step = "results"
     render()
-
-
-def refresh_report_guidance(e=None):
-    income = parse_positive(el("income").value, "income")
-    a = analyze(income, expenses)
-    guideline_name, targets = current_guideline()
-    profile, profile_note = spending_profile(a, targets)
-    el("spending-profile").textContent = profile
-    el("spending-profile-note").textContent = profile_note
-    positive, negative = budget_insights(a, targets)
-    el("positives").innerHTML = "".join(f"<li>{html.escape(t)}</li>" for t in positive)
-    el("negatives").innerHTML = "".join(f"<li>{html.escape(t)}</li>" for t in negative)
-    el("c2").innerHTML = chart_rule(a, targets)
-    el("c2").setAttribute("aria-label", f"Comparison to the {guideline_name} guideline")
-    el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a, targets, str(el("savings-goal").value)))
 
 
 # ---------- events ----------
@@ -293,13 +300,22 @@ def back_to_income(e):
     render()
 
 
-def begin_budget(e=None):
+def back_to_expenses(e):
     global step
+    step = "expense"
+    render()
+
+
+def begin_budget(e=None):
+    global step, expenses
+    expenses = []
     el("income").value = ""
     el("income-err").textContent = ""
     el("expense-err").textContent = ""
     for i in range(len(GROUPS)):
         el(f"expense-{i}").value = ""
+    el("guideline-model").value = "50/30/20"
+    el("savings-goal").value = ""
     step = "income"
     render()
 
@@ -385,10 +401,10 @@ build_expense_fields()
 el("income-form").addEventListener("submit", create_proxy(on_income_submit))
 el("start-budget").addEventListener("click", create_proxy(begin_budget))
 el("back-income").addEventListener("click", create_proxy(back_to_income))
+el("back-expenses").addEventListener("click", create_proxy(back_to_expenses))
+el("continue-preferences").addEventListener("click", create_proxy(continue_to_preferences))
 el("show-results").addEventListener("click", create_proxy(lambda e: show_results()))
 el("edit-expenses").addEventListener("click", create_proxy(edit_expenses))
-el("guideline-model").addEventListener("change", create_proxy(refresh_report_guidance))
-el("savings-goal").addEventListener("change", create_proxy(refresh_report_guidance))
 el("download-csv").addEventListener("click", create_proxy(download_csv))
 el("download-pdf").addEventListener("click", create_proxy(download_pdf))
 el("start-over").addEventListener("click", create_proxy(start_over))

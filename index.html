@@ -60,7 +60,8 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 #expense-fields input[type=number],#income[type=number]{appearance:textfield;-moz-appearance:textfield}
 #expense-fields input[type=number]::-webkit-inner-spin-button,#expense-fields input[type=number]::-webkit-outer-spin-button,#income::-webkit-inner-spin-button,#income::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .chart-empty{min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;color:var(--muted);padding:20px}.chart-empty strong{font-size:.85rem;color:var(--ink)}.chart-empty>span:last-child{font-size:.76rem}.chart-empty-mark{display:grid;place-items:center;width:34px;height:34px;margin-bottom:3px;border-radius:50%;background:#f0f3f5;color:var(--accent);font-size:1.2rem}
-.guideline-select-label,.goal-select-label{display:block;margin:0 0 5px;font-size:.69rem;color:var(--muted);font-weight:550}.guideline-select,.goal-select{width:100%;padding:7px 9px;font-size:.76rem}.goal-select{max-width:360px;margin:0 0 13px}
+.guideline-select-label,.goal-select-label{display:block;margin:0 0 5px;font-size:.69rem;color:var(--muted);font-weight:550}.guideline-select,.goal-select{width:100%;padding:7px 9px;font-size:.76rem}.guideline-select{width:190px;max-width:100%;padding:6px 8px}.goal-select{width:250px;max-width:100%;margin:0 0 13px;padding:7px 9px}
+.report-preferences{display:grid;grid-template-columns:1fr 1fr;justify-content:center;gap:22px;max-width:540px;margin:0 auto}.report-preferences>div{min-width:0}.report-choice{margin:0 0 12px;color:var(--muted);font-size:.78rem}.report-choice:empty{display:none}@media(max-width:580px){.report-preferences{grid-template-columns:1fr;gap:12px}.report-preferences .goal-select{margin-bottom:0}}
 .spending-profile{display:flex;align-items:center;gap:16px}.spending-profile-label{flex:0 0 auto;display:grid;gap:3px}.spending-profile-label small{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.spending-profile-label strong{font-size:.95rem;color:var(--accent)}.spending-profile p{margin:0;color:var(--muted);font-size:.84rem}.spending-profile[hidden]{display:none}@media(max-width:580px){.spending-profile{align-items:flex-start;flex-direction:column;gap:8px}}
 .split div,.track i{transform:scaleX(0);transform-origin:left;animation:budget-fill .8s cubic-bezier(.2,.75,.25,1) forwards}
 .donut circle{stroke-dasharray:0 var(--arc-gap);animation:donut-fill .9s cubic-bezier(.2,.75,.25,1) var(--arc-delay) forwards}
@@ -94,7 +95,7 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 <div class="card dashboard-hero"><h2>Get Started</h2><div class="dashboard-visual" aria-hidden="true"><div class="dashboard-bar"><i style="--bar-height:82%;--bar-color:#6D8196;--bar-delay:0ms"></i><span>Income</span></div><div class="dashboard-bar"><i style="--bar-height:56%;--bar-color:#8A8178;--bar-delay:120ms"></i><span>Expenses</span></div><div class="dashboard-bar"><i style="--bar-height:38%;--bar-color:#879987;--bar-delay:240ms"></i><span>Savings</span></div></div><button id="start-budget" class="primary" type="button">Create Budget</button></div>
 <section class="card dashboard-about"><h3>About this tool</h3><p>Enter your monthly income and expenses to see where your money goes, how your spending compares with common guidelines, and ideas for your next steps.</p></section>
 </section>
-<div class="progress" id="progress" aria-label="Progress"><i id="p1" class="active"></i><i id="p2"></i><i id="p3"></i></div>
+<div class="progress" id="progress" aria-label="Progress"><i id="p1" class="active"></i><i id="p2"></i><i id="p3"></i><i id="p4"></i></div>
 <section id="income-step" class="step"><form id="income-form" class="card step-card" novalidate>
 <div class="step-heading"><h2>Income</h2></div>
 <div class="income-input"><label for="income">Monthly income<details class="help"><summary aria-label="Income help">?</summary><p>Enter your take-home income after taxes.</p></details></label><input id="income" type="number" min="0" step="0.01" placeholder="$ 0.00"></div>
@@ -103,7 +104,12 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 <section id="expense-step" class="step" hidden><div class="card step-card">
 <div class="step-heading"><h2>Expenses</h2></div>
 <div id="expense-fields" class="category-groups"></div><p id="expense-err" class="err" role="alert"></p>
-<div class="step-actions"><button type="button" id="back-income">Back</button><button type="button" id="show-results" class="primary">See my results</button></div>
+<div class="step-actions"><button type="button" id="back-income">Back</button><button type="button" id="continue-preferences" class="primary">Continue</button></div>
+</div></section>
+<section id="preferences-step" class="step" hidden><div class="card step-card">
+<div class="step-heading"><h2>Personalize your report</h2><p>Choose a budget model and a goal to shape your guidance.</p></div>
+<div class="report-preferences"><div><label class="guideline-select-label" for="guideline-model">Budget model</label><select id="guideline-model" class="guideline-select"><option value="50/30/20">50 / 30 / 20 · Classic</option><option value="60/20/20">60 / 20 / 20 · Needs-focused</option><option value="70/20/10">70 / 20 / 10 · Lower savings</option></select></div><div><label class="goal-select-label" for="savings-goal">What are you working toward?</label><select id="savings-goal" class="goal-select"><option value="">General guidance</option><option value="emergency">Build an emergency fund</option><option value="debt">Pay down debt</option><option value="purchase">Save for a purchase</option><option value="investing">Invest for the long term</option></select></div></div>
+<div class="step-actions"><button type="button" id="back-expenses">Back</button><button type="button" id="show-results" class="primary">See my results</button></div>
 </div></section>
 <section id="results-step" class="step" hidden><div id="results">
 <section class="card hero">
@@ -114,11 +120,11 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 <section class="card spending-profile"><div class="spending-profile-label"><small>Your spending style</small><strong id="spending-profile">—</strong></div><p id="spending-profile-note"></p></section>
 <section class="card"><h2>Summary</h2><div class="charts">
 <div class="chart-card"><div id="c1" aria-label="Spending by category"></div></div>
-<div class="chart-card"><h3 class="chart-title">Guideline</h3><label class="guideline-select-label" for="guideline-model">Budget model</label><select id="guideline-model" class="guideline-select"><option value="50/30/20">50 / 30 / 20 · Classic</option><option value="60/20/20">60 / 20 / 20 · Needs-focused</option><option value="70/20/10">70 / 20 / 10 · Lower savings</option></select><div id="c2" aria-label="Comparison to the selected budget guideline"></div></div>
+<div class="chart-card"><h3 class="chart-title">Guideline</h3><p id="guideline-summary" class="report-choice"></p><div id="c2" aria-label="Comparison to the selected budget guideline"></div></div>
 <div class="chart-card"><h3 class="chart-title">Spending Categories</h3><div id="c3" aria-label="Categories as a share of income"></div></div>
 </div></section>
 <section class="card"><h2>Positives and Negatives</h2><div class="insight-columns"><div class="insight-column positive"><h3>Positives</h3><ul class="insight-list" id="positives"></ul></div><div class="insight-column negative"><h3>Negatives</h3><ul class="insight-list" id="negatives"></ul></div></div></section>
-<section class="card"><h2>Recommendations</h2><label class="goal-select-label" for="savings-goal">What are you working toward?</label><select id="savings-goal" class="goal-select"><option value="">General guidance</option><option value="emergency">Build an emergency fund</option><option value="debt">Pay down debt</option><option value="purchase">Save for a purchase</option><option value="investing">Invest for the long term</option></select><ul class="recs" id="recs"></ul></section>
+<section class="card"><h2>Recommendations</h2><p id="goal-summary" class="report-choice"></p><ul class="recs" id="recs"></ul></section>
 </div><div class="step-actions"><button type="button" id="edit-expenses">Back</button><div class="download-actions"><button type="button" id="download-csv">Download CSV</button> <button type="button" id="download-pdf">Download PDF</button></div><button type="button" id="start-over">Start over</button></div></section>
 <footer class="site-credit">Created by Samuel Schenk</footer>
 </main>
