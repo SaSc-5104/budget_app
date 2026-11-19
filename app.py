@@ -24,7 +24,6 @@ expenses = []  # list of {"category": str, "amount": float}
 step = "dashboard"
 saved_months = {}
 month_proxies = []
-dashboard_month_proxies = []
 monthly_mode = False
 
 
@@ -297,7 +296,6 @@ def begin_month_budget(month):
         el(f"expense-{i}").value = ""
     el("budget-month").value = month
     build_month_choices(month)
-    build_dashboard_month_choices(month)
     step = "income"
     render()
 
@@ -314,7 +312,6 @@ def view_saved_month(month):
     el("budget-month").value = month
     load_month_form(month)
     build_month_choices(month)
-    build_dashboard_month_choices(month)
     step = "expense"
     render()
     show_results()
@@ -529,77 +526,7 @@ def on_budget_year_change(e):
     build_month_choices("")
 
 
-def build_dashboard_month_choices(selected):
-    for proxy in dashboard_month_proxies:
-        proxy.destroy()
-    dashboard_month_proxies.clear()
-    years = available_budget_years()
-    year_select = el("dashboard-year")
-    selected_year = int(selected[:4]) if selected else (int(year_select.value) if year_select.value else datetime.now().year)
-    if selected_year not in years:
-        years.append(selected_year)
-        years.sort(reverse=True)
-    year_select.innerHTML = "".join(f'<option value="{year}">{year}</option>' for year in years)
-    year_select.value = str(selected_year)
-    el("dashboard-month").value = selected
-    container = el("dashboard-month-pills")
-    container.innerHTML = ""
-    for month_number in range(1, 13):
-        month = f"{selected_year:04d}-{month_number:02d}"
-        date = datetime.strptime(month, "%Y-%m")
-        button = document.createElement("button")
-        button.type = "button"
-        button.className = "month-pill selected" if month == selected else "month-pill"
-        button.setAttribute("aria-pressed", "true" if month == selected else "false")
-        button.setAttribute("aria-label", month_label(month))
-        button.title = month_label(month)
-        button.id = f"dashboard-month-{month}"
-        button.innerHTML = f"<span>{date.strftime('%b')}</span>"
-        proxy = create_proxy(lambda event, key=month: choose_dashboard_month(key))
-        dashboard_month_proxies.append(proxy)
-        button.addEventListener("click", proxy)
-        container.appendChild(button)
-    update_dashboard_month_action()
-
-
-def choose_dashboard_month(month):
-    el("dashboard-month").value = month
-    for month_number in range(1, 13):
-        key = f"{month[:4]}-{month_number:02d}"
-        button = el(f"dashboard-month-{key}")
-        selected = key == month
-        button.className = "month-pill selected" if selected else "month-pill"
-        button.setAttribute("aria-pressed", "true" if selected else "false")
-    update_dashboard_month_action()
-
-
-def on_dashboard_year_change(e):
-    build_dashboard_month_choices("")
-
-
-def update_dashboard_month_action():
-    month = el("dashboard-month").value
-    button = el("dashboard-month-action")
-    if not month:
-        button.textContent = "Choose a month"
-    elif month in saved_months:
-        button.textContent = f"View {month_label(month)} report"
-    else:
-        button.textContent = f"Start {month_label(month)} budget"
-
-
-def open_dashboard_month(e=None):
-    month = el("dashboard-month").value
-    if not month:
-        return
-    if month in saved_months:
-        view_saved_month(month)
-    else:
-        begin_month_budget(month)
-
-
 def render_dashboard():
-    update_dashboard_month_action()
     months = sorted(saved_months, reverse=True)
     stats = el("dashboard-stats")
     if not months:
@@ -611,9 +538,13 @@ def render_dashboard():
         balance = money(abs(latest["left"]))
         stats.hidden = False
         stats.innerHTML = f'<div class="dashboard-stat"><small>Months saved</small><b>{len(months)}</b></div><div class="dashboard-stat"><small>Latest budget</small><b>{month_label(months[0])}</b></div><div class="dashboard-stat"><small>{balance_label}</small><b>{balance}</b></div>'
-    years = sorted({datetime.now().year} | {int(key[:4]) for key in months})
+    years = sorted({datetime.now().year} | {int(key[:4]) for key in months}, reverse=True)
+    year_select = el("dashboard-calendar-year")
+    selected_year = int(year_select.value) if year_select.value and int(year_select.value) in years else years[0]
+    year_select.innerHTML = "".join(f'<option value="{year}">{year}</option>' for year in years)
+    year_select.value = str(selected_year)
     calendars = []
-    for year in years:
+    for year in (selected_year,):
         tiles = []
         for month_number in range(1, 13):
             key = f"{year:04d}-{month_number:02d}"
@@ -648,7 +579,6 @@ def delete_saved_month(month):
         for i in range(len(GROUPS)):
             el(f"expense-{i}").value = ""
     build_month_choices(el("budget-month").value)
-    build_dashboard_month_choices(el("dashboard-month").value)
     render_dashboard()
 
 
@@ -677,7 +607,6 @@ except Exception:
 if monthly_mode:
     load_month_form(el("budget-month").value)
 build_month_choices(el("budget-month").value)
-build_dashboard_month_choices(datetime.now().strftime("%Y-%m"))
 el("income-form").addEventListener("submit", create_proxy(on_income_submit))
 el("start-budget").addEventListener("click", create_proxy(begin_budget))
 el("income-dashboard").addEventListener("click", create_proxy(go_dashboard))
@@ -685,8 +614,7 @@ el("go-dashboard").addEventListener("click", create_proxy(go_dashboard))
 el("mode-monthly").addEventListener("click", create_proxy(lambda e: set_report_mode(True)))
 el("mode-longterm").addEventListener("click", create_proxy(lambda e: set_report_mode(False)))
 el("budget-year").addEventListener("change", create_proxy(on_budget_year_change))
-el("dashboard-year").addEventListener("change", create_proxy(on_dashboard_year_change))
-el("dashboard-month-action").addEventListener("click", create_proxy(open_dashboard_month))
+el("dashboard-calendar-year").addEventListener("change", create_proxy(lambda e: render_dashboard()))
 el("back-income").addEventListener("click", create_proxy(back_to_income))
 el("show-results").addEventListener("click", create_proxy(lambda e: show_results()))
 el("edit-expenses").addEventListener("click", create_proxy(edit_expenses))
