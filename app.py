@@ -16,7 +16,11 @@ GROUPS = {"Housing": "Needs", "Groceries": "Needs", "Utilities": "Needs", "Trans
           "Dining out": "Wants", "Entertainment": "Wants", "Shopping": "Wants",
           "Subscriptions": "Wants", "Travel": "Wants", "Other": "Wants",
           "Savings & investing": "Savings"}
-TARGET = {"Needs": 50, "Wants": 30, "Saved": 20}
+GUIDELINES = {
+    "50/30/20": {"Needs": 50, "Wants": 30, "Saved": 20},
+    "60/20/20": {"Needs": 60, "Wants": 20, "Saved": 20},
+    "70/20/10": {"Needs": 70, "Wants": 20, "Saved": 10},
+}
 COLORS = {"Needs": "#6D8196", "Wants": "#4A4A4A", "Saved": "#8A9A83"}
 MAX_AMOUNT = 1_000_000_000
 expenses = []  # list of {"category": str, "amount": float}
@@ -60,7 +64,12 @@ def analyze(income, items):
             "pct": {"Needs": needs / income * 100, "Wants": wants / income * 100, "Saved": saved / income * 100}}
 
 
-def spending_profile(a):
+def current_guideline():
+    name = str(el("guideline-model").value)
+    return name, GUIDELINES.get(name, GUIDELINES["50/30/20"])
+
+
+def spending_profile(a, targets):
     pct = a["pct"]
     if a["left"] < 0:
         return "Over budget", f"Your expenses are {money(-a['left'])} higher than your monthly income."
@@ -70,12 +79,12 @@ def spending_profile(a):
         return "Essentials-focused", f"Essentials use {pct['Needs']:.0f}% of your income, leaving less room for flexible spending and savings."
     if pct["Wants"] > 40:
         return "Lifestyle-focused", f"Flexible spending uses {pct['Wants']:.0f}% of your income and is the largest opportunity to adjust."
-    if pct["Needs"] <= 50 and pct["Wants"] <= 30 and pct["Saved"] >= 20:
-        return "Balanced", "Your spending is within the 50/30/20 guideline across essentials, flexible spending, and savings."
+    if pct["Needs"] <= targets["Needs"] and pct["Wants"] <= targets["Wants"] and pct["Saved"] >= targets["Saved"]:
+        return "Balanced", "Your spending is within the selected guideline across essentials, flexible spending, and savings."
     return "Finding your balance", f"Your largest share goes to {max((("essentials", pct['Needs']), ("flexible spending", pct['Wants']), ("savings", pct['Saved'])), key=lambda item: item[1])[0]}. Small adjustments can help bring your budget closer to your priorities."
 
 
-def recommendations(a, monthly=True):
+def recommendations(a, targets, savings_goal=""):
     inc, recs = a["income"], []
     by_cat = a["by_cat"]
     wants_by_cat = by_cat[[c for c in by_cat.index if GROUPS.get(c, "Wants") == "Wants"]]
@@ -85,46 +94,60 @@ def recommendations(a, monthly=True):
     save_pct = a["pct"]["Saved"]
     if a["left"] >= inc * 0.10:
         recs.append(("tip", f"You have {money(a['left'])} left over ({a['left'] / inc:.0%} of your income). Consider putting some toward savings or investing for a future goal."))
-    if a["left"] >= 0 and save_pct < 20:
-        recs.append(("tip", f"You save {save_pct:.0f}% of your income. Putting aside {money(inc * 0.2 - a['saved'])} more would bring you to the 20% guideline."))
-    if a["pct"]["Needs"] > 50:
-        recs.append(("warn" if a["pct"]["Needs"] > 60 else "tip", f"Essentials take {a['pct']['Needs']:.0f}% of income (guideline: 50%). Review your biggest need, {by_cat[[c for c in by_cat.index if GROUPS.get(c) == 'Needs']].index[0]}, for savings such as a cheaper plan or provider."))
-    if a["pct"]["Wants"] > 30 and len(wants_by_cat):
-        cut = a["wants"] - inc * 0.3
-        recs.append(("tip", f"Wants are {a['pct']['Wants']:.0f}% of income (guideline: 30%). Trimming {money(cut)} from this period's budget, starting with {wants_by_cat.index[0]}, would bring you in line."))
+    if a["left"] >= 0 and save_pct < targets["Saved"]:
+        gap = inc * targets["Saved"] / 100 - a["saved"]
+        recs.append(("tip", f"Savings and unspent income are {save_pct:.0f}% of income. Putting aside {money(gap)} more would reach the {targets['Saved']}% guideline."))
+    need_categories = [c for c in by_cat.index if GROUPS.get(c) == "Needs"]
+    if a["pct"]["Needs"] > targets["Needs"] and need_categories:
+        biggest_need = need_categories[0]
+        recs.append(("warn" if a["pct"]["Needs"] > targets["Needs"] + 10 else "tip", f"Essentials take {a['pct']['Needs']:.0f}% of income (guideline: {targets['Needs']}%). Review your biggest need, {biggest_need}, for savings such as a cheaper plan or provider."))
+    if a["pct"]["Wants"] > targets["Wants"] and len(wants_by_cat):
+        cut = a["wants"] - inc * targets["Wants"] / 100
+        recs.append(("tip", f"Flexible spending is {a['pct']['Wants']:.0f}% of income (guideline: {targets['Wants']}%). Trimming {money(cut)} from this budget, starting with {wants_by_cat.index[0]}, would bring it in line."))
     if "Housing" in by_cat.index and by_cat["Housing"] / inc > 0.35:
         recs.append(("warn", f"Housing is {by_cat['Housing'] / inc:.0%} of income. Above about 30-35% it tends to squeeze the rest of your budget."))
-    needs_total = a["needs"]
-    if monthly and a["saved"] > 0 and needs_total > 0:
-        months = 3 * needs_total / a["saved"]
-        recs.append(("tip", f"An emergency fund of 3 months of essentials is {money(3 * needs_total)}. At your current saving rate you would reach it in about {months:.0f} months."))
-    if save_pct >= 20 and a["pct"]["Wants"] <= 30 and a["left"] >= 0:
-        recs.insert(0, ("good", f"Nice work: you are saving {save_pct:.0f}% of your income and keeping wants at {a['pct']['Wants']:.0f}%."))
+    surplus = max(a["left"], 0)
+    if savings_goal == "emergency":
+        goal_text = (f"A starter emergency fund of 3 months of essentials is {money(3 * a['needs'])}. Consider directing part of your monthly surplus ({money(surplus)}) toward it." if a["needs"] > 0 else f"Add your essential expenses to estimate an emergency fund target. Your current monthly surplus is {money(surplus)}.")
+        recs.insert(0, ("goal", goal_text))
+    elif savings_goal == "debt":
+        debt_payment = float(by_cat.get("Debt payments", 0))
+        if debt_payment > 0:
+            goal_text = f"You budget {money(debt_payment)} for debt payments. Keep minimums current and consider directing some of your {money(surplus)} monthly surplus to the highest-interest balance."
+        else:
+            goal_text = f"Add your monthly debt payments to see them in this report. Any available surplus ({money(surplus)}) could help pay down your highest-interest balance."
+        recs.insert(0, ("goal", goal_text))
+    elif savings_goal == "purchase":
+        recs.insert(0, ("goal", f"Set a target amount and date for your purchase. You currently have {money(surplus)} left over each month that you could earmark toward it."))
+    elif savings_goal == "investing":
+        recs.insert(0, ("goal", f"After covering essentials, emergency savings, and high-interest debt, consider whether part of your {money(surplus)} monthly surplus fits your long-term investing goals."))
+    if save_pct >= targets["Saved"] and a["pct"]["Wants"] <= targets["Wants"] and a["left"] >= 0:
+        recs.insert(0, ("good", f"Nice work: savings and unspent income reach {save_pct:.0f}% and flexible spending is within your {targets['Wants']}% guideline."))
     return recs
 
 
-def budget_insights(a):
+def budget_insights(a, targets):
     positive, negative = [], []
     if a["left"] >= 0:
         positive.append(f"Income covers expenses, with {money(a['left'])} left over.")
     else:
         negative.append(f"Expenses exceed income by {money(-a['left'])}.")
-    if a["pct"]["Needs"] <= 50:
-        positive.append(f"Needs use {a['pct']['Needs']:.0f}% of income, within the 50% guideline.")
+    if a["pct"]["Needs"] <= targets["Needs"]:
+        positive.append(f"Needs use {a['pct']['Needs']:.0f}% of income, within the {targets['Needs']}% guideline.")
     else:
-        negative.append(f"Needs use {a['pct']['Needs']:.0f}% of income, above the 50% guideline.")
-    if a["pct"]["Wants"] <= 30:
-        positive.append(f"Wants use {a['pct']['Wants']:.0f}% of income, within the 30% guideline.")
+        negative.append(f"Needs use {a['pct']['Needs']:.0f}% of income, above the {targets['Needs']}% guideline.")
+    if a["pct"]["Wants"] <= targets["Wants"]:
+        positive.append(f"Wants use {a['pct']['Wants']:.0f}% of income, within the {targets['Wants']}% guideline.")
     else:
-        negative.append(f"Wants use {a['pct']['Wants']:.0f}% of income, above the 30% guideline.")
-    if a["pct"]["Saved"] >= 20:
-        positive.append(f"Savings and unspent income reach {a['pct']['Saved']:.0f}%, meeting the 20% guideline.")
+        negative.append(f"Wants use {a['pct']['Wants']:.0f}% of income, above the {targets['Wants']}% guideline.")
+    if a["pct"]["Saved"] >= targets["Saved"]:
+        positive.append(f"Savings and unspent income reach {a['pct']['Saved']:.0f}%, meeting the {targets['Saved']}% guideline.")
     else:
-        negative.append(f"Savings are {a['pct']['Saved']:.0f}% of income, below the 20% guideline.")
+        negative.append(f"Savings are {a['pct']['Saved']:.0f}% of income, below the {targets['Saved']}% guideline.")
     if not positive:
         positive.append("This report gives you a clear starting point for your budget.")
     if not negative:
-        negative.append("No overspending or 50/30/20 guideline gaps were found.")
+        negative.append("No overspending or gaps from the selected guideline were found.")
     return positive, negative
 
 
@@ -154,9 +177,9 @@ def chart_donut(a):
     return '<div class="donut-layout"><svg class="donut" viewBox="0 0 120 120" role="img" aria-label="Spending distribution">' + ''.join(arcs) + f'<text x="60" y="57" text-anchor="middle" class="donut-total">{html.escape(money(a["total"]))}</text><text x="60" y="70" text-anchor="middle" class="donut-caption">total spent</text></svg><div class="chart-legend">' + ''.join(legend) + '</div></div>'
 
 
-def chart_rule(a):
+def chart_rule(a, targets):
     rows = []
-    for key, target in TARGET.items():
+    for key, target in targets.items():
         actual = a["pct"][key]
         color = COLORS[key]
         rows.append(f'<div class="compare-row"><div class="compare-label"><span>{key}</span><b>{actual:.0f}%</b></div><div class="track"><i style="width:{min(actual,100):.1f}%;background:{color}"></i><em style="left:{target}%" title="Guideline: {target}%"></em></div><div class="compare-foot"><span>You</span><span>Guideline {target}%</span></div></div>')
@@ -209,7 +232,8 @@ def show_results():
     el("expense-err").textContent = ""
     expenses = entries
     a = analyze(income, expenses)
-    profile, profile_note = spending_profile(a)
+    guideline_name, targets = current_guideline()
+    profile, profile_note = spending_profile(a, targets)
     el("spending-profile").textContent = profile
     el("spending-profile-note").textContent = profile_note
     big = el("big")
@@ -224,13 +248,29 @@ def show_results():
              ("Savings", a["saved_cat"], COLORS["Saved"]), ("Unspent", max(a["left"], 0), "#CBCBCB")]
     el("split").innerHTML = "".join(f"<div style='width:{v / scale * 100:.2f}%;background:{c}'></div>" for _, v, c in parts)
     el("legend").innerHTML = "".join(f"<span><i class='dot' style='background:{c}'></i>{n} {money(v)}</span>" for n, v, c in parts)
-    positive, negative = budget_insights(a)
+    positive, negative = budget_insights(a, targets)
     el("positives").innerHTML = "".join(f"<li>{html.escape(t)}</li>" for t in positive)
     el("negatives").innerHTML = "".join(f"<li>{html.escape(t)}</li>" for t in negative)
-    el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a))
-    el("c1").innerHTML, el("c2").innerHTML, el("c3").innerHTML = chart_donut(a), chart_rule(a), chart_cats(a)
+    el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a, targets, str(el("savings-goal").value)))
+    el("c1").innerHTML, el("c2").innerHTML, el("c3").innerHTML = chart_donut(a), chart_rule(a, targets), chart_cats(a)
+    el("c2").setAttribute("aria-label", f"Comparison to the {guideline_name} guideline")
     step = "results"
     render()
+
+
+def refresh_report_guidance(e=None):
+    income = parse_positive(el("income").value, "income")
+    a = analyze(income, expenses)
+    guideline_name, targets = current_guideline()
+    profile, profile_note = spending_profile(a, targets)
+    el("spending-profile").textContent = profile
+    el("spending-profile-note").textContent = profile_note
+    positive, negative = budget_insights(a, targets)
+    el("positives").innerHTML = "".join(f"<li>{html.escape(t)}</li>" for t in positive)
+    el("negatives").innerHTML = "".join(f"<li>{html.escape(t)}</li>" for t in negative)
+    el("c2").innerHTML = chart_rule(a, targets)
+    el("c2").setAttribute("aria-label", f"Comparison to the {guideline_name} guideline")
+    el("recs").innerHTML = "".join(f"<li class='{k}'>{html.escape(t)}</li>" for k, t in recommendations(a, targets, str(el("savings-goal").value)))
 
 
 # ---------- events ----------
@@ -289,13 +329,15 @@ def download_csv(e=None):
     writer.writerow(["Budget summary"])
     writer.writerow(["Report type", "Monthly budget"])
     writer.writerow(["Monthly income", f'{income:.2f}'])
+    guideline_name, targets = current_guideline()
+    writer.writerow(["Budget guideline", guideline_name])
     writer.writerow(["Total expenses", f'{a["total"]:.2f}'])
     writer.writerow(["Left over (negative means over budget)", f'{a["left"]:.2f}'])
     writer.writerow([])
     writer.writerow(["Budget group", "Spent", "Share of income", "Guideline"])
     for key, amount, target_key in (("Needs", a["needs"], "Needs"), ("Wants", a["wants"], "Wants"), ("Savings", a["saved_cat"], "Saved")):
         pct = amount / income * 100
-        writer.writerow([key, f"{amount:.2f}", f"{pct:.1f}%", f'{TARGET[target_key]}%'])
+        writer.writerow([key, f"{amount:.2f}", f"{pct:.1f}%", f'{targets[target_key]}%'])
     writer.writerow([])
     writer.writerow(["Category", "Group", "Monthly amount", "Share of income"])
     for item in expenses:
@@ -311,7 +353,8 @@ def download_csv(e=None):
 def pdf_report_data():
     income = parse_positive(el("income").value, "income")
     a = analyze(income, expenses)
-    return {"monthly": True, "period": "Monthly budget",
+    guideline_name, targets = current_guideline()
+    return {"monthly": True, "period": "Monthly budget", "guideline_name": guideline_name, "guidelines": targets,
             "income": income, "total": a["total"], "left": a["left"], "needs": a["needs"],
             "wants": a["wants"], "saved": a["saved"], "saved_category": a["saved_cat"],
             "categories": [{"name": item["category"], "amount": item["amount"],
@@ -344,6 +387,8 @@ el("start-budget").addEventListener("click", create_proxy(begin_budget))
 el("back-income").addEventListener("click", create_proxy(back_to_income))
 el("show-results").addEventListener("click", create_proxy(lambda e: show_results()))
 el("edit-expenses").addEventListener("click", create_proxy(edit_expenses))
+el("guideline-model").addEventListener("change", create_proxy(refresh_report_guidance))
+el("savings-goal").addEventListener("change", create_proxy(refresh_report_guidance))
 el("download-csv").addEventListener("click", create_proxy(download_csv))
 el("download-pdf").addEventListener("click", create_proxy(download_pdf))
 el("start-over").addEventListener("click", create_proxy(start_over))

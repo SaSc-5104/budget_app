@@ -62,11 +62,12 @@
       text(lx + 14, ly, `${label}  ${money(amount)}`, 9, palette.ink);
     });
 
-    text(42, 340, "50 / 30 / 20 guideline", 13, palette.ink, true);
+    const guidelines = data.guidelines || { Needs: 50, Wants: 30, Saved: 20 };
+    text(42, 340, `${data.guideline_name || "50/30/20"} guideline`, 13, palette.ink, true);
     text(42, 357, "Solid bar: your budget     Marker: guideline", 9, palette.muted);
     const ruleRows = [
-      ["Needs", data.needs, 50, palette.slate], ["Wants", data.wants, 30, palette.charcoal],
-      ["Saved", data.saved, 20, palette.green]
+      ["Needs", data.needs, guidelines.Needs, palette.slate], ["Wants", data.wants, guidelines.Wants, palette.charcoal],
+      ["Saved", data.saved, guidelines.Saved, palette.green]
     ];
     ruleRows.forEach(([label, amount, target, fill], i) => {
       const top = 383 + i * 34;
