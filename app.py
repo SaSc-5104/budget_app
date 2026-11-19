@@ -21,7 +21,8 @@ GUIDELINES = {
     "60/20/20": {"Needs": 60, "Wants": 20, "Saved": 20},
     "70/20/10": {"Needs": 70, "Wants": 20, "Saved": 10},
 }
-COLORS = {"Needs": "#6D8196", "Wants": "#4A4A4A", "Saved": "#8A9A83"}
+# Original group colors: Needs #6D8196, Wants #4A4A4A, Saved #8A9A83.
+COLORS = {"Needs": "#5F7F6D", "Wants": "#C78362", "Saved": "#91A88D"}
 MAX_AMOUNT = 1_000_000_000
 expenses = []  # list of {"category": str, "amount": float}
 step = "dashboard"
@@ -152,7 +153,8 @@ def budget_insights(a, targets):
 
 
 # ---------- charts: responsive, native SVG ----------
-PALETTE = ["#6D8196", "#8A9A83", "#A88D70", "#4A4A4A", "#B5A88D", "#8799A8", "#CBCBCB"]
+# Original chart colors: #6D8196, #8A9A83, #A88D70, #4A4A4A, #B5A88D, #8799A8, #CBCBCB.
+PALETTE = ["#5F7F6D", "#91A88D", "#D9AE7E", "#C78362", "#B5C3A8", "#8F9D86", "#D8D8CB"]
 
 
 def chart_empty():
@@ -163,8 +165,6 @@ def chart_donut(a):
     vals = list(a["by_cat"].items())
     if not vals or a["total"] <= 0:
         return chart_empty()
-    if len(vals) > 6:
-        vals = vals[:6] + [("Everything else", sum(v for _, v in vals[6:]))]
     total, circumference, offset = sum(v for _, v in vals), 2 * np.pi * 42, 0
     arcs, legend = [], []
     for i, (name, value) in enumerate(vals):
@@ -187,7 +187,7 @@ def chart_rule(a, targets):
 
 
 def chart_cats(a):
-    s = (a["by_cat"] / a["income"] * 100).sort_values(ascending=False).head(7)
+    s = (a["by_cat"] / a["income"] * 100).sort_values(ascending=False)
     if s.empty:
         return chart_empty()
     rows = []
@@ -267,7 +267,7 @@ def show_results():
         el("bigsub").textContent = f"Expenses of {money(a['total'])} exceed your income of {money(income)}."
     scale = max(income, a["total"], 1)
     parts = [("Needs", a["needs"], COLORS["Needs"]), ("Wants", a["wants"], COLORS["Wants"]),
-             ("Savings", a["saved_cat"], COLORS["Saved"]), ("Unspent", max(a["left"], 0), "#CBCBCB")]
+             ("Savings", a["saved_cat"], COLORS["Saved"]), ("Unspent", max(a["left"], 0), "#D8D8CB")]
     el("split").innerHTML = "".join(f"<div style='width:{v / scale * 100:.2f}%;background:{c}'></div>" for _, v, c in parts)
     el("legend").innerHTML = "".join(f"<span><i class='dot' style='background:{c}'></i>{n} {money(v)}</span>" for n, v, c in parts)
     positive, negative = budget_insights(a, targets)
@@ -320,9 +320,9 @@ def begin_budget(e=None):
     render()
 
 
-def edit_expenses(e):
+def back_to_preferences(e):
     global step
-    step = "expense"
+    step = "preferences"
     render()
 
 
@@ -404,7 +404,7 @@ el("back-income").addEventListener("click", create_proxy(back_to_income))
 el("back-expenses").addEventListener("click", create_proxy(back_to_expenses))
 el("continue-preferences").addEventListener("click", create_proxy(continue_to_preferences))
 el("show-results").addEventListener("click", create_proxy(lambda e: show_results()))
-el("edit-expenses").addEventListener("click", create_proxy(edit_expenses))
+el("back-preferences").addEventListener("click", create_proxy(back_to_preferences))
 el("download-csv").addEventListener("click", create_proxy(download_csv))
 el("download-pdf").addEventListener("click", create_proxy(download_pdf))
 el("start-over").addEventListener("click", create_proxy(start_over))

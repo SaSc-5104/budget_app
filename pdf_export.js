@@ -1,10 +1,11 @@
 (() => {
   const PAGE_W = 612;
   const PAGE_H = 792;
+  // Original PDF palette: slate #6D8196, charcoal #4A4A4A, green #879987, ivory #F3F5F7, gray #CBCBCB, ink #29313A, muted #707984, line #E1E6EB.
   const palette = {
-    slate: "#6D8196", charcoal: "#4A4A4A", green: "#879987",
-    ivory: "#F3F5F7", gray: "#CBCBCB", ink: "#29313A", muted: "#707984",
-    line: "#E1E6EB", white: "#FFFFFF"
+    slate: "#5F7F6D", charcoal: "#35463F", terracotta: "#C78362", green: "#91A88D",
+    ivory: "#F5F3ED", gray: "#D8D8CB", ink: "#26342F", muted: "#6F7B73",
+    line: "#E4E7DF", white: "#FFFEFB"
   };
   const rgb = hex => {
     const v = hex.replace("#", "");
@@ -28,7 +29,7 @@
     };
     rect(0, 0, PAGE_W, 105, palette.charcoal);
     text(42, 43, "Budget report", 23, palette.white, true);
-    text(42, 68, data.period || "Budget summary", 11, "#E7EBEF");
+    text(42, 68, data.period || "Budget summary", 11, "#E9EEE7");
 
     const cards = [
       ["Income", data.income], ["Expenses", data.total], [data.left >= 0 ? "Left over" : "Over budget", Math.abs(data.left)]
@@ -38,13 +39,13 @@
       const x = 42 + i * 176;
       rect(x, 123, cardW, 62, palette.ivory);
       text(x + 13, 146, label, 9, palette.muted);
-      text(x + 13, 171, money(value), 17, i === 2 && data.left < 0 ? "#985F55" : palette.ink, true);
+      text(x + 13, 171, money(value), 17, i === 2 && data.left < 0 ? "#A45C50" : palette.ink, true);
     });
 
     text(42, 222, "Income allocation", 13, palette.ink, true);
     text(42, 239, "How this period's income is assigned", 9, palette.muted);
     const allocation = [
-      ["Needs", data.needs, palette.slate], ["Wants", data.wants, palette.charcoal],
+      ["Needs", data.needs, palette.slate], ["Wants", data.wants, palette.terracotta],
       ["Savings", data.saved_category, palette.green], ["Unspent", Math.max(data.left, 0), palette.gray]
     ];
     const allocationTotal = Math.max(Number(data.income), Number(data.total), 1);
@@ -66,7 +67,7 @@
     text(42, 340, `${data.guideline_name || "50/30/20"} guideline`, 13, palette.ink, true);
     text(42, 357, "Solid bar: your budget     Marker: guideline", 9, palette.muted);
     const ruleRows = [
-      ["Needs", data.needs, guidelines.Needs, palette.slate], ["Wants", data.wants, guidelines.Wants, palette.charcoal],
+      ["Needs", data.needs, guidelines.Needs, palette.slate], ["Wants", data.wants, guidelines.Wants, palette.terracotta],
       ["Saved", data.saved, guidelines.Saved, palette.green]
     ];
     ruleRows.forEach(([label, amount, target, fill], i) => {
@@ -74,7 +75,7 @@
       const pct = Number(amount) / Math.max(Number(data.income), 1) * 100;
       text(42, top + 9, label, 9, palette.ink, true);
       text(94, top + 9, `${Math.round(pct)}% / ${target}%`, 8, palette.muted);
-      rect(180, top, 340, 8, "#EEF0F2");
+      rect(180, top, 340, 8, "#EBEEE8");
       rect(180, top, 340 * Math.min(pct, 100) / 100, 8, fill);
       line(180 + 340 * target / 100, top - 3, 180 + 340 * target / 100, top + 11, palette.charcoal, 1.5);
     });
@@ -86,9 +87,9 @@
     categories.forEach((item, i) => {
       const top = 545 + i * 25;
       const pct = Number(item.amount) / Math.max(Number(data.income), 1) * 100;
-      const fill = item.group === "Needs" ? palette.slate : item.group === "Savings" ? palette.green : palette.charcoal;
+      const fill = item.group === "Needs" ? palette.slate : item.group === "Savings" ? palette.green : palette.terracotta;
       text(42, top + 8, ascii(item.name).slice(0, 25), 8.5, palette.ink);
-      rect(190, top, 290, 8, "#EEF0F2");
+      rect(190, top, 290, 8, "#EBEEE8");
       rect(190, top, 290 * pct / maxPct, 8, fill);
       text(491, top + 8, `${pct.toFixed(0)}%`, 8, palette.muted);
     });
@@ -102,7 +103,7 @@
       ops = [];
       rect(0, 0, PAGE_W, 105, palette.charcoal);
       text(42, 43, "Additional categories", 23, palette.white, true);
-      text(42, 68, data.period || "Budget summary", 11, "#E7EBEF");
+      text(42, 68, data.period || "Budget summary", 11, "#E9EEE7");
       text(42, 145, "Other reported expenses", 13, palette.ink, true);
       text(42, 170, "Category", 9, palette.muted, true);
       text(310, 170, "Group", 9, palette.muted, true);
