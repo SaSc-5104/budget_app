@@ -306,7 +306,7 @@ def download_pdf(e=None):
 
 def build_expense_fields():
     groups = {"Needs": [], "Wants": [], "Savings": []}
-    descriptions = {"Needs": "Core costs", "Wants": "Flexible spending", "Savings": "Saving and investing"}
+    descriptions = {"Needs": "Necessary Spending", "Wants": "Unnecessary Spending", "Savings": "Saving and Investing"}
     for category, group in GROUPS.items():
         groups[group].append(category)
     blocks = []
