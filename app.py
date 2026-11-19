@@ -68,6 +68,8 @@ def recommendations(a, monthly=True):
         recs.append(("warn", f"You are spending {money(-a['left'])} more than your income for this period. Start with your largest 'wants' category"
                      + (f", {wants_by_cat.index[0]} ({money(wants_by_cat.iloc[0])})." if len(wants_by_cat) else ".")))
     save_pct = a["pct"]["Saved"]
+    if a["left"] >= inc * 0.10:
+        recs.append(("tip", f"You have {money(a['left'])} left over ({a['left'] / inc:.0%} of your income). Consider putting some toward savings or investing for a future goal."))
     if a["left"] >= 0 and save_pct < 20:
         recs.append(("tip", f"You save {save_pct:.0f}% of your income. Putting aside {money(inc * 0.2 - a['saved'])} more would bring you to the 20% guideline."))
     if a["pct"]["Needs"] > 50:
