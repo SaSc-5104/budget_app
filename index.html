@@ -97,7 +97,7 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 <section class="card dashboard-about"><h3>About this tool</h3><p>Enter your monthly income and expenses to see where your money goes, how your spending compares with common guidelines, and ideas for your next steps.</p></section>
 </section>
 <div class="progress" id="progress" aria-label="Progress"><i id="p1" class="active"></i><i id="p2"></i><i id="p3"></i><i id="p4"></i></div>
-<section id="income-step" class="step"><form id="income-form" class="card step-card" novalidate>
+<section id="income-step" class="step" hidden><form id="income-form" class="card step-card" novalidate>
 <div class="step-heading"><h2>Income</h2></div>
 <div class="income-input"><label for="income">Monthly income<details class="help"><summary aria-label="Income help">?</summary><p>Enter your take-home income after taxes.</p></details></label><input id="income" type="number" min="0" step="0.01" placeholder="$ 0.00"></div>
 <p id="income-err" class="err" role="alert"></p><div class="step-actions" style="justify-content:center"><button class="primary" type="submit">Continue</button></div>
