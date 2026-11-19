@@ -1,6 +1,6 @@
 # Personal Budgeting Tool
 
-A browser-based budgeting tool, no installation of anything needed. See link below for access. Input your monthly income, expenses, and preferences on budget guidlines and goals and get a detailed report of spending, recommendations and pros/cons. You can also download the report as a CSV or PDF.
+A browser-based budgeting tool, no installation of anything needed. See link below for access. Input your monthly income, expenses, and preferences on budget guidlines and goals and get a detailed report of spending, recommendations, and pros/cons. You can also download the report as a CSV or PDF.
 
 The browser loads Pandas and NumPy through PyScript, so no `pip install` is needed. 
 
@@ -11,7 +11,7 @@ The browser loads Pandas and NumPy through PyScript, so no `pip install` is need
 1. Input monthly income after tax.
 2. Input your monthly expenses by category.
 3. Select preferences on budget guidlines and personal goals.
-3. View the report and choose CSV, PDF to download.
+3. View the report and choose CSV or PDF to download.
 
 ## Files
 - `index.html`: interface and styling
