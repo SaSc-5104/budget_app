@@ -11,6 +11,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,"Segoe UI",system-ui,sans-serif}
 main{max-width:1020px;margin:0 auto;padding:40px 24px 72px}
+.site-credit{margin:28px 0 0;text-align:center;color:var(--muted);font-size:.72rem;letter-spacing:.02em}
 header{text-align:center;margin:0 auto 20px;max-width:650px}
 h1{font-size:2.35rem;margin:0;letter-spacing:-.045em;font-weight:700}
 h2{font-size:1rem;margin:0 0 16px;letter-spacing:-.01em}
@@ -56,8 +57,8 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 @media(max-width:580px){.compare-summary{grid-template-columns:1fr}.compare-stat-pair{grid-template-columns:1fr 1fr}.compare-bar-line{grid-template-columns:76px minmax(20px,1fr) 58px;gap:6px}}
 .insight-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px}.insight-column{border:1px solid var(--line);border-radius:12px;padding:16px}.insight-column h3{font-size:.86rem;margin:0 0 10px}.insight-column.positive h3{color:#61796b}.insight-column.negative h3{color:#985f55}.insight-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}.insight-list li{background:#f4f6f5;border-radius:9px;padding:10px 12px;font-size:.82rem}.insight-column.negative li{background:#faf4f2}@media(max-width:580px){.insight-columns{grid-template-columns:1fr}}
 .category-groups{gap:12px;align-items:stretch}.category-group{padding:17px 15px;background:#fff;border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:13px;box-shadow:0 3px 12px #29313a08}.category-group.needs{border-top-color:#6D8196}.category-group.wants{border-top-color:#8a8178}.category-group.savings{border-top-color:#879987}.category-group h3{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin:0 0 10px;color:var(--ink);font-size:.88rem}.category-group h3 small{display:block;margin-top:1px;color:var(--muted);font-size:.68rem;font-weight:450}.category-field{grid-template-columns:minmax(0,1fr) 92px;gap:7px;padding:8px 0;border-bottom:1px solid #edf0f2}.category-field:last-child{border-bottom:0}.category-field label{font-size:.76rem;line-height:1.25}.category-field input{background:#f5f7f8;border-color:transparent;padding:8px 9px;font-size:.82rem;transition:background .15s,border-color .15s}.category-field input:hover{background:#f0f3f5}.category-field input:focus{background:white;border-color:var(--accent);outline:none}
-#expense-fields input[type=number]{appearance:textfield;-moz-appearance:textfield}
-#expense-fields input[type=number]::-webkit-inner-spin-button,#expense-fields input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+#expense-fields input[type=number],#income[type=number]{appearance:textfield;-moz-appearance:textfield}
+#expense-fields input[type=number]::-webkit-inner-spin-button,#expense-fields input[type=number]::-webkit-outer-spin-button,#income::-webkit-inner-spin-button,#income::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .chart-empty{min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;color:var(--muted);padding:20px}.chart-empty strong{font-size:.85rem;color:var(--ink)}.chart-empty>span:last-child{font-size:.76rem}.chart-empty-mark{display:grid;place-items:center;width:34px;height:34px;margin-bottom:3px;border-radius:50%;background:#f0f3f5;color:var(--accent);font-size:1.2rem}
 .spending-profile{display:flex;align-items:center;gap:16px}.spending-profile-label{flex:0 0 auto;display:grid;gap:3px}.spending-profile-label small{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.spending-profile-label strong{font-size:.95rem;color:var(--accent)}.spending-profile p{margin:0;color:var(--muted);font-size:.84rem}.spending-profile[hidden]{display:none}@media(max-width:580px){.spending-profile{align-items:flex-start;flex-direction:column;gap:8px}}
 .split div,.track i{transform:scaleX(0);transform-origin:left;animation:budget-fill .8s cubic-bezier(.2,.75,.25,1) forwards}
@@ -118,6 +119,7 @@ ul.items li:last-child{border-bottom:0}.empty{color:var(--muted);font-size:.9rem
 <section class="card"><h2>Positives and Negatives</h2><div class="insight-columns"><div class="insight-column positive"><h3>Positives</h3><ul class="insight-list" id="positives"></ul></div><div class="insight-column negative"><h3>Negatives</h3><ul class="insight-list" id="negatives"></ul></div></div></section>
 <section class="card"><h2>Recommendations</h2><ul class="recs" id="recs"></ul></section>
 </div><div class="step-actions"><button type="button" id="edit-expenses">Back</button><div class="download-actions"><button type="button" id="download-csv">Download CSV</button> <button type="button" id="download-pdf">Download PDF</button></div><button type="button" id="start-over">Start over</button></div></section>
+<footer class="site-credit">Created by Samuel Schenk</footer>
 </main>
 <script src="./pdf_export.js?v=1"></script>
 <script type="py" src="./app.py?v=30" config='{"packages":["pandas","numpy"]}'></script>
