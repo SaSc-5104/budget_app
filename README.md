@@ -1,4 +1,4 @@
-# Budget Tracker
+# Personal Budgeting Tool
 
 A browser-based budgeting tool, no installation of anything needed. See link below for access. Input your monthly income, expenses, and preferences on budget guidlines and goals and get a detailed report of spending, recommendations and pros/cons. You can also download the report as a CSV or PDF.
 
