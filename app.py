@@ -33,7 +33,7 @@ def el(i):
 
 
 def money(v):
-    return f"${v:,.0f}" if abs(v) >= 100 else f"${v:,.2f}"
+    return f"${v:,.2f}"
 
 
 def parse_positive(raw, name):
@@ -55,11 +55,11 @@ def analyze(income, items):
     df["group"] = df["category"].map(GROUPS).fillna("Wants")
     by_cat = df.groupby("category")["amount"].sum().sort_values(ascending=False)
     grp = df.groupby("group")["amount"].sum()
-    total = float(df["amount"].sum())
-    left = income - total
-    needs, wants = float(grp.get("Needs", 0)), float(grp.get("Wants", 0))
-    saved_cat = float(grp.get("Savings", 0))
-    saved = saved_cat + max(left, 0)  # money not spent counts as saved
+    total = round(float(df["amount"].sum()), 2)
+    left = round(income - total, 2)
+    needs, wants = round(float(grp.get("Needs", 0)), 2), round(float(grp.get("Wants", 0)), 2)
+    saved_cat = round(float(grp.get("Savings", 0)), 2)
+    saved = round(saved_cat + max(left, 0), 2)  # money not spent counts as saved
     return {"by_cat": by_cat, "total": total, "left": left, "needs": needs, "wants": wants,
             "saved_cat": saved_cat, "saved": saved, "income": income,
             "pct": {"Needs": needs / income * 100, "Wants": wants / income * 100, "Saved": saved / income * 100}}

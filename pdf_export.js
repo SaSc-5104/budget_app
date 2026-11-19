@@ -16,7 +16,7 @@
   const colorOp = (hex, stroke = false) => `${rgb(hex).map(v => v.toFixed(3)).join(" ")} ${stroke ? "RG" : "rg"}`;
   const ascii = value => String(value).normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7e]/g, "-");
   const pdfText = value => ascii(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-  const money = value => "$" + Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 0 });
+  const money = value => "$" + Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   function makeReport(data) {
     let ops = [];
