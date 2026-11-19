@@ -51,15 +51,22 @@ def parse_positive(raw, name):
 
 # ---------- processing ----------
 def analyze(income, items):
-    df = pd.DataFrame(items, columns=["category", "amount"])
-    df["group"] = df["category"].map(GROUPS).fillna("Wants")
-    by_cat = df.groupby("category")["amount"].sum().sort_values(ascending=False)
-    grp = df.groupby("group")["amount"].sum()
-    total = round(float(df["amount"].sum()), 2)
-    left = round(income - total, 2)
-    needs, wants = round(float(grp.get("Needs", 0)), 2), round(float(grp.get("Wants", 0)), 2)
-    saved_cat = round(float(grp.get("Savings", 0)), 2)
-    saved = round(saved_cat + max(left, 0), 2)  # money not spent counts as saved
+    income_cents = int(round(income * 100))
+    category_cents = {}
+    group_cents = {"Needs": 0, "Wants": 0, "Savings": 0}
+    for item in items:
+        cents = int(round(item["amount"] * 100))
+        category = item["category"]
+        category_cents[category] = category_cents.get(category, 0) + cents
+        group = GROUPS.get(category, "Wants")
+        group_cents[group] = group_cents.get(group, 0) + cents
+    by_cat = pd.Series({category: cents / 100 for category, cents in category_cents.items()}, dtype=float).sort_values(ascending=False)
+    total_cents = sum(group_cents.values())
+    left_cents = income_cents - total_cents
+    total, left = total_cents / 100, left_cents / 100
+    needs, wants = group_cents["Needs"] / 100, group_cents["Wants"] / 100
+    saved_cat = group_cents["Savings"] / 100
+    saved = (group_cents["Savings"] + max(left_cents, 0)) / 100  # money not spent counts as saved
     return {"by_cat": by_cat, "total": total, "left": left, "needs": needs, "wants": wants,
             "saved_cat": saved_cat, "saved": saved, "income": income,
             "pct": {"Needs": needs / income * 100, "Wants": wants / income * 100, "Saved": saved / income * 100}}
@@ -166,7 +173,7 @@ def chart_donut(a):
     vals = list(a["by_cat"].items())
     if not vals or a["total"] <= 0:
         return chart_empty()
-    total, circumference, offset = sum(v for _, v in vals), 2 * np.pi * 42, 0
+    total, circumference, offset = a["total"], 2 * np.pi * 42, 0
     arcs, legend = [], []
     for i, (name, value) in enumerate(vals):
         pct = value / total if total else 0
