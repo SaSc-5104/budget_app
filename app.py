@@ -22,7 +22,7 @@ GUIDELINES = {
     "70/20/10": {"Needs": 70, "Wants": 20, "Saved": 10},
 }
 # Original group colors: Needs #6D8196, Wants #4A4A4A, Saved #8A9A83.
-COLORS = {"Needs": "#5F7F6D", "Wants": "#C78362", "Saved": "#91A88D"}
+COLORS = {"Needs": "#3B6FC4", "Wants": "#E16A45", "Saved": "#159A77"}
 MAX_AMOUNT = 1_000_000_000
 expenses = []  # list of {"category": str, "amount": float}
 step = "dashboard"
@@ -154,7 +154,8 @@ def budget_insights(a, targets):
 
 # ---------- charts: responsive, native SVG ----------
 # Original chart colors: #6D8196, #8A9A83, #A88D70, #4A4A4A, #B5A88D, #8799A8, #CBCBCB.
-PALETTE = ["#5F7F6D", "#91A88D", "#D9AE7E", "#C78362", "#B5C3A8", "#8F9D86", "#D8D8CB"]
+PALETTE = ["#3B6FC4", "#159A77", "#B48310", "#E16A45", "#7C5AB5", "#169FA6", "#C54855",
+           "#8D6E63", "#4682B4", "#7A891D", "#B34F92", "#667085", "#BD5E15", "#8C6FB1"]
 
 
 def chart_empty():
@@ -267,7 +268,7 @@ def show_results():
         el("bigsub").textContent = f"Expenses of {money(a['total'])} exceed your income of {money(income)}."
     scale = max(income, a["total"], 1)
     parts = [("Needs", a["needs"], COLORS["Needs"]), ("Wants", a["wants"], COLORS["Wants"]),
-             ("Savings", a["saved_cat"], COLORS["Saved"]), ("Unspent", max(a["left"], 0), "#D8D8CB")]
+             ("Savings", a["saved_cat"], COLORS["Saved"]), ("Unspent", max(a["left"], 0), "#D6DBE4")]
     el("split").innerHTML = "".join(f"<div style='width:{v / scale * 100:.2f}%;background:{c}'></div>" for _, v, c in parts)
     el("legend").innerHTML = "".join(f"<span><i class='dot' style='background:{c}'></i>{n} {money(v)}</span>" for n, v, c in parts)
     positive, negative = budget_insights(a, targets)

@@ -3,9 +3,9 @@
   const PAGE_H = 792;
   // Original PDF palette: slate #6D8196, charcoal #4A4A4A, green #879987, ivory #F3F5F7, gray #CBCBCB, ink #29313A, muted #707984, line #E1E6EB.
   const palette = {
-    slate: "#5F7F6D", charcoal: "#35463F", terracotta: "#C78362", green: "#91A88D",
-    ivory: "#F5F3ED", gray: "#D8D8CB", ink: "#26342F", muted: "#6F7B73",
-    line: "#E4E7DF", white: "#FFFEFB"
+    slate: "#3B6FC4", charcoal: "#263345", terracotta: "#E16A45", green: "#159A77",
+    ivory: "#F4F6FA", gray: "#D6DBE4", ink: "#202938", muted: "#657184",
+    line: "#E2E7EF", white: "#FFFFFF"
   };
   const rgb = hex => {
     const v = hex.replace("#", "");
@@ -29,7 +29,7 @@
     };
     rect(0, 0, PAGE_W, 105, palette.charcoal);
     text(42, 43, "Budget report", 23, palette.white, true);
-    text(42, 68, data.period || "Budget summary", 11, "#E9EEE7");
+    text(42, 68, data.period || "Budget summary", 11, "#E9EEF6");
 
     const cards = [
       ["Income", data.income], ["Expenses", data.total], [data.left >= 0 ? "Left over" : "Over budget", Math.abs(data.left)]
@@ -39,7 +39,7 @@
       const x = 42 + i * 176;
       rect(x, 123, cardW, 62, palette.ivory);
       text(x + 13, 146, label, 9, palette.muted);
-      text(x + 13, 171, money(value), 17, i === 2 && data.left < 0 ? "#A45C50" : palette.ink, true);
+      text(x + 13, 171, money(value), 17, i === 2 && data.left < 0 ? "#C54855" : palette.ink, true);
     });
 
     text(42, 222, "Income allocation", 13, palette.ink, true);
@@ -75,7 +75,7 @@
       const pct = Number(amount) / Math.max(Number(data.income), 1) * 100;
       text(42, top + 9, label, 9, palette.ink, true);
       text(94, top + 9, `${Math.round(pct)}% / ${target}%`, 8, palette.muted);
-      rect(180, top, 340, 8, "#EBEEE8");
+      rect(180, top, 340, 8, "#EDF0F5");
       rect(180, top, 340 * Math.min(pct, 100) / 100, 8, fill);
       line(180 + 340 * target / 100, top - 3, 180 + 340 * target / 100, top + 11, palette.charcoal, 1.5);
     });
@@ -89,7 +89,7 @@
       const pct = Number(item.amount) / Math.max(Number(data.income), 1) * 100;
       const fill = item.group === "Needs" ? palette.slate : item.group === "Savings" ? palette.green : palette.terracotta;
       text(42, top + 8, ascii(item.name).slice(0, 25), 8.5, palette.ink);
-      rect(190, top, 290, 8, "#EBEEE8");
+      rect(190, top, 290, 8, "#EDF0F5");
       rect(190, top, 290 * pct / maxPct, 8, fill);
       text(491, top + 8, `${pct.toFixed(0)}%`, 8, palette.muted);
     });
